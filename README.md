@@ -17,7 +17,9 @@ Export straight-forward metrics to track Kubernetes cluster nodes binpacking eff
 ** Why not user Kube O11Y tools?** While the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metrics can be used it fall short because:
 
 1. These metrics are pulled from different sources at different intervals. This causes aggregration to not give an accurate *snapshot* of the cluster and not reflecting accurate numbers, especially when tracking improvement overtime.
+  1. Inaccuracy is very high in highly-dynamic clusters with a lot pod movement.
 2. Queries gets extremely complex ( e.g execlude failed & completed pods, handle init containers, complex `joins` to group by node labels )
+3. Some O11Y tools ( looking at you DD ) query language lacks the flexibility to accuratly combine and aggregate these metrics.
 
 ** How is KCP better ?**: Mirror the clsuter state and returns an atomic snapshot of the cluster binpacking state on each scrape. It's like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop.
 
@@ -38,11 +40,23 @@ KCP only concern is *Are Pod's _requests_ being satisified in the most effecient
 - **Configurable resync period**: Control informer cache refresh frequency.
 - Multi-arch build.
 
-## Future Planned
+### Planned
 
 - Support more Node resources. (e.g `storage` and `gpu`)
 - Calculate Daemonset Overhead.
 - Advanced Label Grouping (Group by two labels values).
+
+# Installation
+
+**Helm (Recommended):**
+```bash
+helm install binpacking-exporter \
+  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+  --version <check-releases>
+```
+
+Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how your O11Y stack pull the metrics for `/metrics` ad `:9101`.
+
 
 ## Metrics
 
@@ -89,18 +103,6 @@ binpacking_label_group_utilization_ratio{label_key="topology.kubernetes.io/zone"
 binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_value="us-east-1a"} 2
 
 ```
-# Installation
-
-**Helm (Recommended):**
-```bash
-helm install binpacking-exporter \
-  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
-  --version <check-releases>
-```
-
-Check Helm [values.yaml](./chart/values.yaml) for options.
-
----
 
 ### Flags
 
@@ -118,6 +120,8 @@ Check Helm [values.yaml](./chart/values.yaml) for options.
 | `--list-page-size` | `500` | Number of resources to fetch per page during initial sync (0 = no pagination) |
 
 ### HTTP Endpoints
+
+Default to port `:9101`
 
 | Endpoint | Purpose |
 |----------|---------|
