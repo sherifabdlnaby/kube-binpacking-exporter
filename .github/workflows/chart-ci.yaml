@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - "chart/**"
+      - "Makefile"
       - ".github/workflows/chart-ci.yaml"
   pull_request:
     branches: [main]
     paths:
       - "chart/**"
+      - "Makefile"
       - ".github/workflows/chart-ci.yaml"
   workflow_dispatch:
 
@@ -23,20 +25,13 @@ jobs:
       - uses: azure/setup-helm@v4
 
       - name: Lint chart (strict)
-        # --strict fails on warnings too; values.schema.json is validated automatically
-        run: helm lint chart/ --strict
+        run: make helm-lint
 
       - name: Validate template rendering
-        # Ensures all templates render without errors against default values
-        run: helm template binpacking-exporter chart/ > /dev/null
+        run: make helm-template
 
-      - name: Validate template with schema violations
-        # Confirm schema rejects invalid values
-        run: |
-          ! helm template binpacking-exporter chart/ \
-            --set logLevel=invalid-level > /dev/null 2>&1 \
-          && echo "Schema correctly rejected invalid logLevel" \
-          || (echo "ERROR: Schema should have rejected invalid logLevel" && exit 1)
+      - name: Validate schema rejects invalid values
+        run: make helm-schema
 
   helm-docs:
     name: Helm Docs
@@ -47,31 +42,14 @@ jobs:
           # Need full history + ability to push on main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run helm-docs
-        run: |
-          docker run --rm \
-            -v "$(pwd):/helm-docs" \
-            -w /helm-docs \
-            jnorwood/helm-docs:v1.14.2 \
-            --chart-search-root chart/
-
-      - name: Check if README.md changed (fail on PRs)
+      - name: Check chart/README.md is up to date (PRs)
         if: github.event_name == 'pull_request'
-        run: |
-          if ! git diff --quiet chart/README.md; then
-            echo ""
-            echo "chart/README.md is out of date!"
-            echo "Run 'helm-docs --chart-search-root chart/' locally and commit the result."
-            echo ""
-            echo "Diff:"
-            git diff chart/README.md
-            exit 1
-          fi
-          echo "chart/README.md is up to date."
+        run: make helm-docs-check
 
       - name: Auto-commit updated README (on main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
+          make helm-docs
           if ! git diff --quiet chart/README.md; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
