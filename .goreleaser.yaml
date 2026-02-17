@@ -11,7 +11,6 @@ builds:
     goos:
       - linux
       - darwin
-      - windows
     goarch:
       - amd64
       - arm64
@@ -19,10 +18,8 @@ builds:
     goarm:
       - "7"
     ignore:
-      - goos: windows
+      - goos: darwin
         goarch: arm
-      - goos: windows
-        goarch: arm64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
     binary: kube-cluster-binpacking-exporter
@@ -37,9 +34,6 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    format_overrides:
-      - goos: windows
-        format: zip
     files:
       - LICENSE*
       - README*
@@ -91,35 +85,7 @@ release:
   prerelease: auto
   mode: replace
   header: |
-    ## Kubernetes Cluster Binpacking Exporter `{{.Tag}}` 🚀
-
-    Prometheus exporter for monitoring Kubernetes cluster binpacking efficiency.
-
-    ### Container Images
-
-    Multi-arch Docker images available on GitHub Container Registry:
-    ```bash
-    docker pull ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{.Tag}}
-    ```
-
-    Supported platforms: `linux/amd64`, `linux/arm64`
-
-    ### Helm Chart
-
-    Helm chart published to OCI registry:
-    ```bash
-    # Install from OCI registry
-    helm install binpacking-exporter \
-      oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
-      --version {{.Version}}
-
-    # Or with custom values
-    helm install binpacking-exporter \
-      oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
-      --version {{.Version}} \
-      --set debug=true \
-      --set resyncPeriod=1m
-    ```
+    ## `{{.Tag}}` 🚀
 
   footer: |
     **Full Changelog**: https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/compare/{{.PreviousTag}}...{{.Tag}}
@@ -136,7 +102,7 @@ release:
     ```
 
     **Binary:**
-    Download the appropriate binary for your platform from the assets above.
+    Download the appropriate binary for your platform from the assets below.
 
     **Docker:**
     ```bash
