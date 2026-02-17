@@ -17,7 +17,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var version = "dev"
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
 
 func main() {
 	var (
