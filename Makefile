@@ -1,11 +1,23 @@
 .PHONY: help test test-verbose test-coverage coverage-html coverage-func vet lint lint-install ci build clean
 
+# Build variables (single source of truth for CI, Docker, local builds)
+VERSION ?= dev
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# Build flags (centralized ldflags)
+LDFLAGS := -s -w \
+	-X main.version=$(VERSION) \
+	-X main.commit=$(COMMIT) \
+	-X main.date=$(DATE)
+
 # golangci-lint version (must match CI)
 GOLANGCI_LINT_VERSION = v2.9.0
 
 # Default target shows available commands
 help:
 	@echo "Available targets:"
+	@echo "  make build             - Build the binary with version info"
 	@echo "  make test              - Run all tests"
 	@echo "  make test-verbose      - Run tests with verbose output"
 	@echo "  make test-coverage     - Run tests and generate coverage report"
@@ -15,8 +27,10 @@ help:
 	@echo "  make lint              - Run golangci-lint"
 	@echo "  make lint-install      - Install golangci-lint $(GOLANGCI_LINT_VERSION)"
 	@echo "  make ci                - Run all CI checks (build, vet, test, lint)"
-	@echo "  make build             - Build the binary"
 	@echo "  make clean             - Remove build artifacts and coverage files"
+	@echo ""
+	@echo "Build with custom version:"
+	@echo "  make build VERSION=v1.2.3 COMMIT=abc123 DATE=2024-01-01T00:00:00Z"
 
 # Run all tests
 test:
@@ -80,10 +94,10 @@ ci: build vet test lint
 	@echo ""
 	@echo "✓ All CI checks passed!"
 
-# Build binary
+# Build binary with version info
 build:
-	@echo "Building binary..."
-	go build -o kube-cluster-binpacking-exporter .
+	@echo "Building kube-cluster-binpacking-exporter $(VERSION)..."
+	go build -ldflags "$(LDFLAGS)" -o kube-cluster-binpacking-exporter .
 
 # Clean build artifacts
 clean:

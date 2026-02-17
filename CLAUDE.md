@@ -303,20 +303,22 @@ Releases are **fully automated** when merging PRs to main. The version is determ
 | `skip-release` | No release | - | CI changes, tests, docs-only updates |
 
 **Workflow:**
-1. Create PR with changes
+1. Create PR with changes → **CI runs** (build/test/lint on AMD64 + ARM64)
 2. Add appropriate version label (`major`, `minor`, `patch`, or `skip-release`)
-3. Merge PR to `main`
-4. Auto-release workflow:
+3. Merge PR to `main` → **Auto-release workflow runs**:
    - Detects PR merge and reads labels
    - Calculates new semantic version
    - Creates and pushes git tag (e.g., `v1.2.3`)
    - Comments on PR with release details
-5. Release workflow (triggered by tag):
-   - Builds multi-arch Docker images (linux/amd64, linux/arm64)
-   - Builds cross-platform binaries (Linux/macOS/Windows for amd64/arm64/arm)
+4. Tag push → **Release workflow runs**:
+   - Builds multi-arch Docker images on native runners (no emulation)
+   - Builds cross-platform binaries via GoReleaser
+   - Packages and publishes Helm chart to OCI registry
    - Generates changelog from commits
-   - Creates GitHub Release with binaries and checksums
-   - Pushes Docker images to ghcr.io
+   - Creates GitHub Release with all artifacts
+   - Pushes Docker images and Helm chart to ghcr.io
+
+**No Duplication:** CI only runs on PRs (before merge). Main branch updates always come from PR merges, ensuring all code is tested without redundant builds on main.
 
 **Example PR Labels:**
 - Adding new metric → `minor`
