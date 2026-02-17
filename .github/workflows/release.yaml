@@ -208,7 +208,7 @@ jobs:
       # ── Security scan (released image) ──────────────────────────────
       - name: Scan released image with Trivy
         if: steps.version.outputs.new_tag != '' && inputs.draft != true
-        uses: aquasecurity/trivy-action@0.31.0
+        uses: aquasecurity/trivy-action@0.34.0
         with:
           image-ref: ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
           format: sarif
