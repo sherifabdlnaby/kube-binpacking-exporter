@@ -42,13 +42,11 @@ jobs:
           # Need full history + ability to push on main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
       - name: Install helm-docs
-        run: make helm-docs-install
+        run: mise install helm-docs
 
       - name: Check chart/README.md is up to date (PRs)
         if: github.event_name == 'pull_request'
