@@ -100,11 +100,14 @@ jobs:
 
       - name: Package and push Helm chart
         run: |
-          # Chart.yaml version is already correct — set by auto-release before tagging
+          # Chart.yaml holds 0.0.0 in the repo — inject the real version at release time
           CHART_VERSION="${{ github.ref_name }}"
           CHART_VERSION="${CHART_VERSION#v}"
 
-          helm package chart/
+          sed -i "s/^version: .*/version: ${CHART_VERSION}/" chart/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${CHART_VERSION}\"/" chart/Chart.yaml
+
+          helm package chart/ --version ${CHART_VERSION} --app-version ${CHART_VERSION}
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
           helm push kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
 
