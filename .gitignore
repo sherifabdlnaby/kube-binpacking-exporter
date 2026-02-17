@@ -25,3 +25,6 @@ tmp/
 
 # Diagnostic scripts
 test-connectivity.sh
+
+# Claude Code AI memory (local only)
+memory/
