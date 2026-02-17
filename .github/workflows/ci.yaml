@@ -28,15 +28,10 @@ jobs:
       - name: Test
         run: make test
 
-      - name: Lint
+      - name: Lint Go code
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.9.0
-
-  helm-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
       - uses: azure/setup-helm@v4
 
