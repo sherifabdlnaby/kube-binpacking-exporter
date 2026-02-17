@@ -25,6 +25,8 @@ permissions:
   packages: write
   pull-requests: read
   security-events: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -176,6 +178,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Attest binary artifacts
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-checksums: ./dist/checksums.txt
+
       # ── Docker (multi-arch, no per-arch tags) ────────────────────────
       # Skipped for draft releases — publish Docker/Helm after reviewing the draft
       - name: Docker metadata
@@ -189,6 +197,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.new_tag }}
 
       - name: Build and push multi-arch image
+        id: docker-build
         if: steps.version.outputs.new_tag != '' && inputs.draft != true
         uses: docker/build-push-action@v6
         with:
@@ -204,6 +213,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
+
+      - name: Attest Docker image
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.docker-build.outputs.digest }}
+          push-to-registry: true
 
       # ── Security scan (released image) ──────────────────────────────
       - name: Scan released image with Trivy
