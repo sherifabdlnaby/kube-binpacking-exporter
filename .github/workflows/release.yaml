@@ -2,7 +2,7 @@ name: Release
 
 # Single workflow: PR merge → semver tag → GoReleaser (binaries + GitHub Release) → Docker → Helm OCI push
 # PR labels control version bump: major, minor, patch (default), skip-release
-# Manual trigger also supported via workflow_dispatch
+# Manual trigger also supported via workflow_dispatch (with optional draft mode)
 
 on:
   push:
@@ -14,6 +14,11 @@ on:
         description: "Version to release (e.g. v1.2.3). Leave empty to auto-detect from last PR."
         required: false
         type: string
+      draft:
+        description: "Create as draft release (review before publishing). Docker and Helm are skipped until you publish."
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -167,13 +172,14 @@ jobs:
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --clean
+          args: release --clean ${{ inputs.draft == true && '--draft' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ── Docker (multi-arch, no per-arch tags) ────────────────────────
+      # Skipped for draft releases — publish Docker/Helm after reviewing the draft
       - name: Docker metadata
-        if: steps.version.outputs.new_tag != ''
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -183,7 +189,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.new_tag }}
 
       - name: Build and push multi-arch image
-        if: steps.version.outputs.new_tag != ''
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -201,7 +207,7 @@ jobs:
 
       # ── Security scan (released image) ──────────────────────────────
       - name: Scan released image with Trivy
-        if: steps.version.outputs.new_tag != ''
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
         uses: aquasecurity/trivy-action@0.31.0
         with:
           image-ref: ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
@@ -211,7 +217,7 @@ jobs:
           exit-code: "0"
 
       - name: Upload Trivy release SARIF
-        if: steps.version.outputs.new_tag != ''
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-release.sarif
@@ -219,11 +225,11 @@ jobs:
 
       # ── Helm chart (OCI registry) ────────────────────────────────────
       - name: Set up Helm
-        if: steps.version.outputs.new_tag != ''
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
         uses: azure/setup-helm@v4
 
       - name: Publish Helm chart
-        if: steps.version.outputs.new_tag != ''
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
         run: |
           CHART_VERSION="${{ steps.version.outputs.new_tag }}"
           CHART_VERSION="${CHART_VERSION#v}"
