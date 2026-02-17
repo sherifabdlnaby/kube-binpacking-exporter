@@ -74,6 +74,17 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # Run GoReleaser FIRST (requires clean git state)
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Helm operations AFTER GoReleaser (can modify files)
       - uses: azure/setup-helm@v4
 
       - name: Update Helm chart version
@@ -104,12 +115,3 @@ jobs:
           helm push kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
 
           echo "✅ Helm chart published to oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
