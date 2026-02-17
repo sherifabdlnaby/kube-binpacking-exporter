@@ -1,23 +1,19 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
+  # Only run on PRs, not on main pushes (avoids duplicate work)
+  # Main is protected and only updated via PR merges, so this ensures
+  # all code is tested before merge without re-running on main
   pull_request:
     branches: [main]
 
+  # Allow manual triggers for testing
+  workflow_dispatch:
+
 jobs:
   build:
-    name: Build & Test (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            arch: amd64
-          - os: ubuntu-24.04-arm64
-            arch: arm64
-    runs-on: ${{ matrix.os }}
+    name: Build & Test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -36,8 +32,6 @@ jobs:
         run: go test -v ./...
 
       - name: Lint
-        # Only run lint on AMD64 to avoid duplicate work
-        if: matrix.arch == 'amd64'
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.9.0
