@@ -1,0 +1,53 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Resources to track for binpacking metrics.
+resources:
+  - cpu
+  - memory
+
+metricsPort: 9101
+metricsPath: /metrics
+
+# Enable debug logging
+debug: false
+
+# Informer cache resync period (e.g., 1m, 5m, 1h30m)
+resyncPeriod: 5m
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podResources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+service:
+  type: ClusterIP
+  port: 9101
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  additionalLabels: {}

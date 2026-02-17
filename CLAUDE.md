@@ -23,7 +23,7 @@ Prometheus exporter that monitors Kubernetes cluster binpacking efficiency. Comp
 | `collector.go` | Prometheus collector | `Collect()` - computes metrics, `calculatePodRequest()` - init container logic |
 | `Dockerfile` | Container image | Multi-stage: `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |
 | `charts/` | Helm deployment | RBAC (get/list/watch nodes+pods), ServiceMonitor, configurable resync period |
-| `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint/test with caching, `release.yaml` - multi-arch (amd64/arm64) GHCR push on tag |
+| `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint/test, `release.yaml` - multi-arch Docker + GoReleaser binaries, `auto-release.yaml` - semantic versioning from PR labels |
 
 ## Metrics Exported
 
@@ -288,6 +288,64 @@ Minimal dependency footprint — only official Kubernetes and Prometheus libs:
 | `github.com/prometheus/client_golang` | Prometheus collector interface, HTTP handler | Latest stable |
 
 No controller-runtime, no operator SDK — just the essentials.
+
+## Release Process
+
+### Automated Releases via PR Labels
+
+Releases are **fully automated** when merging PRs to main. The version is determined by PR labels:
+
+| Label | Version Bump | Example | Use When |
+|-------|-------------|---------|----------|
+| `major` | Breaking change | 1.2.3 → 2.0.0 | API changes, removed features, major refactors |
+| `minor` | New feature | 1.2.3 → 1.3.0 | New functionality, backward-compatible |
+| `patch` | Bug fix | 1.2.3 → 1.2.4 | Bug fixes, documentation, default if no label |
+| `skip-release` | No release | - | CI changes, tests, docs-only updates |
+
+**Workflow:**
+1. Create PR with changes
+2. Add appropriate version label (`major`, `minor`, `patch`, or `skip-release`)
+3. Merge PR to `main`
+4. Auto-release workflow:
+   - Detects PR merge and reads labels
+   - Calculates new semantic version
+   - Creates and pushes git tag (e.g., `v1.2.3`)
+   - Comments on PR with release details
+5. Release workflow (triggered by tag):
+   - Builds multi-arch Docker images (linux/amd64, linux/arm64)
+   - Builds cross-platform binaries (Linux/macOS/Windows for amd64/arm64/arm)
+   - Generates changelog from commits
+   - Creates GitHub Release with binaries and checksums
+   - Pushes Docker images to ghcr.io
+
+**Example PR Labels:**
+- Adding new metric → `minor`
+- Fixing cache sync bug → `patch`
+- Changing metric names → `major`
+- Updating CI workflow → `skip-release`
+
+### Manual Release (if needed)
+
+```bash
+# Create tag manually
+git tag v1.0.0
+git push origin v1.0.0
+
+# Release workflow automatically triggers
+```
+
+### Release Artifacts
+
+Each release includes:
+- **Docker images**: `ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:v1.2.3`
+  - Multi-arch manifest: linux/amd64, linux/arm64
+  - Also tagged as: `1.2.3`, `1.2`, `sha-<commit>`
+- **Binaries**: Cross-platform archives
+  - Linux: amd64, arm64, arm/v7 (tar.gz)
+  - macOS: amd64 (Intel), arm64 (Apple Silicon) (tar.gz)
+  - Windows: amd64, arm64 (zip)
+- **Checksums**: SHA256 checksums.txt for verification
+- **Changelog**: Auto-generated, grouped by type (Features, Bug Fixes, etc.)
 
 ## Troubleshooting
 

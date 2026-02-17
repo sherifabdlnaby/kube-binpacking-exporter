@@ -39,4 +39,4 @@ jobs:
       - uses: azure/setup-helm@v4
 
       - name: Lint Helm chart
-        run: helm lint charts/kube-cluster-binpacking-exporter
+        run: helm lint chart
