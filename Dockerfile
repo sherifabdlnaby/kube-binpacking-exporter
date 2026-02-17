@@ -1,20 +1,22 @@
 FROM golang:1.25-alpine AS builder
 
-ARG VERSION=dev
-ARG COMMIT=unknown
-ARG DATE=unknown
-
 WORKDIR /build
 
-# Install make and git for Makefile
+# Install make and git for Makefile — cached unless base image changes
 RUN apk add --no-cache make git
 
-# Copy dependencies and Makefile
+# Copy dependency files first — cached unless go.mod/go.sum changes
 COPY go.mod go.sum Makefile ./
 RUN go mod download
 
-# Copy source code
+# Copy source code — cached unless .go files change
 COPY *.go ./
+
+# ARGs declared here so they don't bust the dependency/apk cache above.
+# VERSION/COMMIT/DATE change on every release — only the final build layer is invalidated.
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG DATE=unknown
 
 # Build using Makefile (centralized ldflags)
 RUN CGO_ENABLED=0 make build \
