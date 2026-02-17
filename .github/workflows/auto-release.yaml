@@ -2,11 +2,9 @@ name: Auto Release
 
 # Workflow Sequence:
 # 1. PR created → CI runs (build/test/lint)
-# 2. PR merged → This workflow detects merge
+# 2. PR merged to main → CI runs again (safety check) + This workflow detects merge
 # 3. Creates semantic version tag based on PR labels
 # 4. Tag push triggers Release workflow (Docker + binaries + Helm)
-#
-# No duplication: CI only runs on PRs, not on main pushes
 
 on:
   push:

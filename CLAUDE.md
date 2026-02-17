@@ -303,9 +303,9 @@ Releases are **fully automated** when merging PRs to main. The version is determ
 | `skip-release` | No release | - | CI changes, tests, docs-only updates |
 
 **Workflow:**
-1. Create PR with changes → **CI runs** (build/test/lint on AMD64 + ARM64)
+1. Create PR with changes → **CI runs** (build/test/lint)
 2. Add appropriate version label (`major`, `minor`, `patch`, or `skip-release`)
-3. Merge PR to `main` → **Auto-release workflow runs**:
+3. Merge PR to `main` → **CI runs again** (safety check) + **Auto-release workflow runs**:
    - Detects PR merge and reads labels
    - Calculates new semantic version
    - Creates and pushes git tag (e.g., `v1.2.3`)
@@ -318,7 +318,7 @@ Releases are **fully automated** when merging PRs to main. The version is determ
    - Creates GitHub Release with all artifacts
    - Pushes Docker images and Helm chart to ghcr.io
 
-**No Duplication:** CI only runs on PRs (before merge). Main branch updates always come from PR merges, ensuring all code is tested without redundant builds on main.
+**CI runs on both PRs and main:** Ensures code is tested before merge (PR) and verified after merge (main) for safety.
 
 **Example PR Labels:**
 - Adding new metric → `minor`
