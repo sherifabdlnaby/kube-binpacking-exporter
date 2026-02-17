@@ -100,15 +100,11 @@ jobs:
 
       - name: Package and push Helm chart
         run: |
-          VERSION="${{ github.ref_name }}"
-          CHART_VERSION="${VERSION#v}"
+          # Chart.yaml version is already correct — set by auto-release before tagging
+          CHART_VERSION="${{ github.ref_name }}"
+          CHART_VERSION="${CHART_VERSION#v}"
 
-          # Update Chart.yaml with release version
-          sed -i "s/^version: .*/version: ${CHART_VERSION}/" chart/Chart.yaml
-          sed -i "s/^appVersion: .*/appVersion: \"${CHART_VERSION}\"/" chart/Chart.yaml
-
-          # Package and push to OCI registry
-          helm package chart --version ${CHART_VERSION} --app-version ${CHART_VERSION}
+          helm package chart/
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
           helm push kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
 

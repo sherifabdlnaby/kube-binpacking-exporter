@@ -3,7 +3,7 @@ name: Auto Release
 # Workflow Sequence:
 # 1. PR created → CI runs (build/test/lint)
 # 2. PR merged to main → CI runs again (safety check) + This workflow detects merge
-# 3. Creates semantic version tag based on PR labels
+# 3. Calculates next semver, updates Chart.yaml on main, then creates tag
 # 4. Tag push triggers Release workflow (Docker + binaries + Helm)
 
 on:
@@ -29,7 +29,6 @@ jobs:
       - name: Get merged PR number
         id: pr
         run: |
-          # Extract PR number from merge commit message
           PR_NUM=$(echo "${{ github.event.head_commit.message }}" | grep -oP 'Merge pull request #\K\d+' || echo "")
           if [ -z "$PR_NUM" ]; then
             echo "Not a PR merge, skipping release"
@@ -72,13 +71,38 @@ jobs:
             echo "type=minor" >> $GITHUB_OUTPUT
             echo "Version bump: MINOR (new features)"
           else
-            # Default to patch if no version label (or if patch label present)
             echo "type=patch" >> $GITHUB_OUTPUT
             echo "Version bump: PATCH (bug fixes)"
           fi
 
-      - name: Bump version and create tag
+      - name: Calculate next version (dry run)
         if: steps.pr.outputs.skip != 'true' && steps.skip-check.outputs.skip != 'true'
+        id: next-version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag_prefix: v
+          default_bump: ${{ steps.bump.outputs.type }}
+          dry_run: true
+
+      - name: Update Chart.yaml with new version
+        if: steps.next-version.outputs.new_version != ''
+        run: |
+          VERSION="${{ steps.next-version.outputs.new_version }}"
+
+          sed -i "s/^version: .*/version: ${VERSION}/" chart/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${VERSION}\"/" chart/Chart.yaml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add chart/Chart.yaml
+          git commit -m "chore: bump chart to ${VERSION} [skip ci]"
+          git push
+
+          echo "Updated Chart.yaml to version: ${VERSION}"
+
+      - name: Create and push release tag
+        if: steps.next-version.outputs.new_version != ''
         id: tag
         uses: mathieudutour/github-tag-action@v6.2
         with:
@@ -86,7 +110,6 @@ jobs:
           tag_prefix: v
           default_bump: ${{ steps.bump.outputs.type }}
           create_annotated_tag: true
-          custom_tag: ${{ steps.bump.outputs.type }}
 
       - name: Comment on PR
         if: steps.tag.outputs.new_tag != ''
