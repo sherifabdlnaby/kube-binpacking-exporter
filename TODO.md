@@ -12,5 +12,5 @@
   - Implementation: `stripUnusedFields()` function that transforms objects before entering informer cache
 - [ ] Event-handler based pre-computation: maintain running tallies updated on pod ADDED/MODIFIED/DELETED events instead of iterating all pods on each scrape (O(nodes) scrape instead of O(pods))
 - [x] Paginated initial list: use client-go paging support to load pods in batches during initial informer sync
-- [ ] Field selector filtering: avoid caching terminated pods that aren't needed for allocation calculation
+- [x] Field selector filtering: server-side `status.phase!=Succeeded,status.phase!=Failed` on pod informer excludes terminated pods from cache
 

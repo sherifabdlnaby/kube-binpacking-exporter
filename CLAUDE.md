@@ -20,7 +20,7 @@ Prometheus exporter that monitors Kubernetes cluster binpacking efficiency. Comp
 | File | Role | Key Functions |
 |------|------|---------------|
 | `main.go` | Entry point, HTTP server | Flag parsing, signal handling, `/metrics`, `/healthz`, `/readyz`, `/sync` endpoints |
-| `kubernetes.go` | Kube client setup | `setupKubernetes()` - config resolution, informer factory, cache sync with progress logging |
+| `kubernetes.go` | Kube client setup | `setupKubernetes()` - config resolution, informer factories (node + pod), cache sync with progress logging |
 | `collector.go` | Prometheus collector | `Collect()` - computes metrics, `calculatePodRequest()` - init container logic |
 | `Dockerfile` | Container image | Multi-stage: `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |
 | `chart/` | Helm chart | RBAC, ServiceMonitor, published to OCI registry at ghcr.io |
@@ -97,13 +97,13 @@ See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, help
 
 **Kubernetes**: Config resolution: flag → kubeconfig → in-cluster | Fail-fast `ServerVersion()` check | 2-min sync timeout with progress logging every 5s
 
-**Pod Accounting**: `max(sum_regular, max_init)` matches K8s scheduler | Filters unscheduled (`NodeName=""`) and terminated (`Succeeded|Failed`) pods
+**Pod Accounting**: `max(sum_regular, max_init)` matches K8s scheduler | Terminated pods (`Succeeded|Failed`) excluded server-side via field selector on pod informer | Unscheduled pods (`NodeName=""`) filtered client-side in `Collect()`
 
 **Metrics**: Scrape-time `MustNewConstMetric` (auto-handles node churn) | Custom registry (no Go runtime metrics) | `resource` label for extensibility | Optional label-based grouping via `--label-groups` | Cache age metric for stale alerts
 
 **Health Checks**: `/healthz` = process alive, `/readyz` = cache synced | Readiness: 5s delay/10s period, Liveness: 10s delay/30s period
 
-**Informers**: `--resync-period` (default 5m) | SharedInformerFactory (single watch) | `--list-page-size` pagination (default 500, ~40% memory reduction, client-go handles Continue tokens)
+**Informers**: `--resync-period` (default 5m) | Separate node and pod factories (pod factory uses `status.phase!=Succeeded,status.phase!=Failed` field selector to exclude terminated pods server-side) | `--list-page-size` pagination (default 500, ~40% memory reduction, client-go handles Continue tokens)
 
 ## Conventions
 
