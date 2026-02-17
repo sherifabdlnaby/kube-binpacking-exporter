@@ -19,6 +19,7 @@ permissions:
   contents: write
   packages: write
   pull-requests: read
+  security-events: write
 
 jobs:
   release:
@@ -197,6 +198,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
+
+      # ── Security scan (released image) ──────────────────────────────
+      - name: Scan released image with Trivy
+        if: steps.version.outputs.new_tag != ''
+        uses: aquasecurity/trivy-action@0.31.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
+          format: sarif
+          output: trivy-release.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+
+      - name: Upload Trivy release SARIF
+        if: steps.version.outputs.new_tag != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-release.sarif
+          category: trivy-release-image
 
       # ── Helm chart (OCI registry) ────────────────────────────────────
       - name: Set up Helm

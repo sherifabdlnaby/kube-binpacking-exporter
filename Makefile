@@ -1,4 +1,4 @@
-.PHONY: help build vet test test-verbose test-coverage coverage-html coverage-func lint \
+.PHONY: help build vet test test-verbose test-coverage coverage-html coverage-func lint govulncheck \
         go helm helm-lint helm-template helm-schema helm-docs helm-docs-check clean
 
 # ── Build variables ────────────────────────────────────────────────────────
@@ -29,6 +29,7 @@ help:
 	@echo "  make coverage-html     - Open HTML coverage report in browser"
 	@echo "  make coverage-func     - Show per-function coverage"
 	@echo "  make lint              - Run golangci-lint"
+	@echo "  make govulncheck       - Check for known Go vulnerabilities"
 	@echo ""
 	@echo "Helm targets:"
 	@echo "  make helm-lint         - helm lint chart/ --strict"
@@ -85,6 +86,10 @@ coverage-func: test-coverage
 lint:
 	@echo "Running golangci-lint..."
 	golangci-lint run
+
+govulncheck:
+	@echo "Running govulncheck..."
+	govulncheck ./...
 
 # ── Helm checks ────────────────────────────────────────────────────────────
 
