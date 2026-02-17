@@ -74,10 +74,10 @@ podResources:
     # -- CPU request for the exporter pod
     cpu: 50m
     # -- Memory request for the exporter pod
-    memory: 64Mi
+    memory: 100Mi
   limits:
     # -- Memory limit for the exporter pod
-    memory: 128Mi
+    memory: 150Mi
 
 # -- Priority class name for pod scheduling. Use an existing PriorityClass name
 priorityClassName: ""
