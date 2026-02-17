@@ -29,8 +29,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.65.6
-          skip-cache: true
+          version: v2.9.0
 
   helm-lint:
     runs-on: ubuntu-latest
