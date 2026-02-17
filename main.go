@@ -23,20 +23,24 @@ var (
 
 func main() {
 	var (
-		kubeconfig   string
-		metricsAddr  string
-		metricsPath  string
-		resourceCSV  string
-		logLevel     string
-		logFormat    string
-		resyncPeriod string
-		listPageSize int
+		kubeconfig      string
+		metricsAddr     string
+		metricsPath     string
+		resourceCSV     string
+		labelGroupsCSV  string
+		logLevel        string
+		logFormat       string
+		resyncPeriod    string
+		listPageSize    int
+		disableNodeMetrics bool
 	)
 
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig (uses in-cluster config if empty)")
 	flag.StringVar(&metricsAddr, "metrics-addr", ":9101", "address to serve metrics on")
 	flag.StringVar(&metricsPath, "metrics-path", "/metrics", "HTTP path for metrics endpoint")
 	flag.StringVar(&resourceCSV, "resources", "cpu,memory", "comma-separated list of resources to track")
+	flag.StringVar(&labelGroupsCSV, "label-groups", "", "comma-separated list of node label keys to group by (e.g., 'topology.kubernetes.io/zone,node.kubernetes.io/instance-type')")
+	flag.BoolVar(&disableNodeMetrics, "disable-node-metrics", false, "disable per-node metrics to reduce cardinality (only emit cluster-wide and label-group metrics)")
 	flag.StringVar(&logLevel, "log-level", "info", "log level: debug, info, warn, error")
 	flag.StringVar(&logFormat, "log-format", "json", "log format: json, text")
 	flag.StringVar(&resyncPeriod, "resync-period", "5m", "informer cache resync period (e.g., 1m, 30s, 1h30m)")
@@ -50,6 +54,15 @@ func main() {
 
 	resources := parseResources(resourceCSV)
 	logger.Info("tracking resources", "resources", resourceCSV)
+
+	labelGroups := parseLabels(labelGroupsCSV)
+	if len(labelGroups) > 0 {
+		logger.Info("tracking label groups", "labels", labelGroupsCSV)
+	}
+
+	if disableNodeMetrics {
+		logger.Info("per-node metrics disabled - only emitting cluster-wide and label-group metrics")
+	}
 
 	resync, err := time.ParseDuration(resyncPeriod)
 	if err != nil {
@@ -67,7 +80,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, syncInfo)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, !disableNodeMetrics, syncInfo)
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
@@ -197,4 +210,19 @@ func parseResources(csv string) []corev1.ResourceName {
 		}
 	}
 	return resources
+}
+
+func parseLabels(csv string) []string {
+	if csv == "" {
+		return nil
+	}
+	parts := strings.Split(csv, ",")
+	labels := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			labels = append(labels, p)
+		}
+	}
+	return labels
 }

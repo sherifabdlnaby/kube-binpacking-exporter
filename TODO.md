@@ -2,9 +2,8 @@
 
 ## Features
 - [x] Account for init container resource requests (take max of init vs sum of regular containers)
+- [x] Add a feature to calculate binpacking based on a Node Label, with input being a list of labels that we'll calculate the binpacking for all nodes with the same label.
 - [ ] A POST request to trigger a sync.
-- [ ] Add a feature to calculate binpacking based on a Node Label, with input being a list of labels that we'll calculate the binpacking for all nodes with the same label.
-- [ ] Add JSON and Human Readable (beautiful logs with colors) option, and different log level support.
 
 
 ## Performance Optimizations

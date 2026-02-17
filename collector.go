@@ -42,6 +42,31 @@ var (
 		"Cluster-wide allocation ratio",
 		[]string{"resource"}, nil,
 	)
+	labelGroupAllocated = prometheus.NewDesc(
+		"binpacking_label_group_allocated",
+		"Total resource requested by pods on nodes with this label value",
+		[]string{"label_key", "label_value", "resource"}, nil,
+	)
+	labelGroupAllocatable = prometheus.NewDesc(
+		"binpacking_label_group_allocatable",
+		"Total allocatable resource on nodes with this label value",
+		[]string{"label_key", "label_value", "resource"}, nil,
+	)
+	labelGroupUtilization = prometheus.NewDesc(
+		"binpacking_label_group_utilization_ratio",
+		"Ratio of allocated to allocatable for nodes with this label value (0.0-1.0+)",
+		[]string{"label_key", "label_value", "resource"}, nil,
+	)
+	labelGroupNodeCount = prometheus.NewDesc(
+		"binpacking_label_group_node_count",
+		"Number of nodes with this label value",
+		[]string{"label_key", "label_value"}, nil,
+	)
+	clusterNodeCount = prometheus.NewDesc(
+		"binpacking_cluster_node_count",
+		"Total number of nodes in the cluster",
+		nil, nil,
+	)
 	cacheAge = prometheus.NewDesc(
 		"binpacking_cache_age_seconds",
 		"Time since last informer cache sync",
@@ -51,11 +76,13 @@ var (
 
 // BinpackingCollector implements prometheus.Collector using informer caches.
 type BinpackingCollector struct {
-	nodeLister listerscorev1.NodeLister
-	podLister  listerscorev1.PodLister
-	logger     *slog.Logger
-	resources  []corev1.ResourceName
-	syncInfo   *SyncInfo
+	nodeLister        listerscorev1.NodeLister
+	podLister         listerscorev1.PodLister
+	logger            *slog.Logger
+	resources         []corev1.ResourceName
+	labelGroups       []string
+	enableNodeMetrics bool
+	syncInfo          *SyncInfo
 }
 
 // calculatePodRequest computes the effective resource request for a pod.
@@ -117,24 +144,37 @@ func NewBinpackingCollector(
 	podLister listerscorev1.PodLister,
 	logger *slog.Logger,
 	resources []corev1.ResourceName,
+	labelGroups []string,
+	enableNodeMetrics bool,
 	syncInfo *SyncInfo,
 ) *BinpackingCollector {
 	return &BinpackingCollector{
-		nodeLister: nodeLister,
-		podLister:  podLister,
-		logger:     logger,
-		resources:  resources,
-		syncInfo:   syncInfo,
+		nodeLister:        nodeLister,
+		podLister:         podLister,
+		logger:            logger,
+		resources:         resources,
+		labelGroups:       labelGroups,
+		enableNodeMetrics: enableNodeMetrics,
+		syncInfo:          syncInfo,
 	}
 }
 
 func (c *BinpackingCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- nodeAllocated
-	ch <- nodeAllocatable
-	ch <- nodeUtilization
+	if c.enableNodeMetrics {
+		ch <- nodeAllocated
+		ch <- nodeAllocatable
+		ch <- nodeUtilization
+	}
 	ch <- clusterAllocated
 	ch <- clusterAllocatable
 	ch <- clusterUtilization
+	ch <- clusterNodeCount
+	if len(c.labelGroups) > 0 {
+		ch <- labelGroupAllocated
+		ch <- labelGroupAllocatable
+		ch <- labelGroupUtilization
+		ch <- labelGroupNodeCount
+	}
 	ch <- cacheAge
 }
 
@@ -233,16 +273,19 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 				ratio = allocated / allocatable
 			}
 
-			c.logger.Debug("node metrics",
-				"node", node.Name,
-				"resource", resStr,
-				"allocated", allocated,
-				"allocatable", allocatable,
-				"utilization", ratio)
+			// Emit per-node metrics if enabled
+			if c.enableNodeMetrics {
+				c.logger.Debug("node metrics",
+					"node", node.Name,
+					"resource", resStr,
+					"allocated", allocated,
+					"allocatable", allocatable,
+					"utilization", ratio)
 
-			ch <- prometheus.MustNewConstMetric(nodeAllocated, prometheus.GaugeValue, allocated, node.Name, resStr)
-			ch <- prometheus.MustNewConstMetric(nodeAllocatable, prometheus.GaugeValue, allocatable, node.Name, resStr)
-			ch <- prometheus.MustNewConstMetric(nodeUtilization, prometheus.GaugeValue, ratio, node.Name, resStr)
+				ch <- prometheus.MustNewConstMetric(nodeAllocated, prometheus.GaugeValue, allocated, node.Name, resStr)
+				ch <- prometheus.MustNewConstMetric(nodeAllocatable, prometheus.GaugeValue, allocatable, node.Name, resStr)
+				ch <- prometheus.MustNewConstMetric(nodeUtilization, prometheus.GaugeValue, ratio, node.Name, resStr)
+			}
 
 			clusterAllocatedTotals[res] += allocated
 			clusterAllocatableTotals[res] += allocatable
@@ -269,5 +312,90 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(clusterAllocated, prometheus.GaugeValue, allocated, resStr)
 		ch <- prometheus.MustNewConstMetric(clusterAllocatable, prometheus.GaugeValue, allocatable, resStr)
 		ch <- prometheus.MustNewConstMetric(clusterUtilization, prometheus.GaugeValue, ratio, resStr)
+	}
+
+	// Emit cluster node count
+	ch <- prometheus.MustNewConstMetric(clusterNodeCount, prometheus.GaugeValue, float64(len(nodes)))
+
+	// Emit label-group metrics if configured.
+	if len(c.labelGroups) > 0 {
+		c.collectLabelGroupMetrics(ch, nodes, podsByNode)
+	}
+}
+
+// collectLabelGroupMetrics calculates and emits binpacking metrics grouped by node labels.
+func (c *BinpackingCollector) collectLabelGroupMetrics(ch chan<- prometheus.Metric, nodes []*corev1.Node, podsByNode map[string][]*corev1.Pod) {
+	for _, labelKey := range c.labelGroups {
+		// Group nodes by label value.
+		nodesByLabelValue := make(map[string][]*corev1.Node)
+		for _, node := range nodes {
+			labelValue, ok := node.Labels[labelKey]
+			if !ok {
+				// Track nodes without this label under a special value.
+				labelValue = "<none>"
+			}
+			nodesByLabelValue[labelValue] = append(nodesByLabelValue[labelValue], node)
+		}
+
+		c.logger.Debug("grouping nodes by label",
+			"label_key", labelKey,
+			"group_count", len(nodesByLabelValue))
+
+		// For each label value, calculate aggregate binpacking metrics.
+		for labelValue, groupNodes := range nodesByLabelValue {
+			// Track totals for this label group per resource.
+			groupAllocatedTotals := make(map[corev1.ResourceName]float64)
+			groupAllocatableTotals := make(map[corev1.ResourceName]float64)
+
+			for _, node := range groupNodes {
+				nodePods := podsByNode[node.Name]
+
+				for _, res := range c.resources {
+					// Sum pod requests for this resource on this node.
+					var allocated float64
+					for _, pod := range nodePods {
+						podRequest, _ := calculatePodRequest(pod, res)
+						allocated += podRequest
+					}
+
+					// Get node allocatable for this resource.
+					var allocatable float64
+					if qty, ok := node.Status.Allocatable[res]; ok {
+						allocatable = qty.AsApproximateFloat64()
+					}
+
+					groupAllocatedTotals[res] += allocated
+					groupAllocatableTotals[res] += allocatable
+				}
+			}
+
+			// Emit metrics for this label group.
+			for _, res := range c.resources {
+				resStr := string(res)
+				allocated := groupAllocatedTotals[res]
+				allocatable := groupAllocatableTotals[res]
+
+				var ratio float64
+				if allocatable > 0 {
+					ratio = allocated / allocatable
+				}
+
+				c.logger.Debug("label group metrics",
+					"label_key", labelKey,
+					"label_value", labelValue,
+					"resource", resStr,
+					"allocated", allocated,
+					"allocatable", allocatable,
+					"utilization", ratio,
+					"node_count", len(groupNodes))
+
+				ch <- prometheus.MustNewConstMetric(labelGroupAllocated, prometheus.GaugeValue, allocated, labelKey, labelValue, resStr)
+				ch <- prometheus.MustNewConstMetric(labelGroupAllocatable, prometheus.GaugeValue, allocatable, labelKey, labelValue, resStr)
+				ch <- prometheus.MustNewConstMetric(labelGroupUtilization, prometheus.GaugeValue, ratio, labelKey, labelValue, resStr)
+			}
+
+			// Emit node count for this label group
+			ch <- prometheus.MustNewConstMetric(labelGroupNodeCount, prometheus.GaugeValue, float64(len(groupNodes)), labelKey, labelValue)
+		}
 	}
 }

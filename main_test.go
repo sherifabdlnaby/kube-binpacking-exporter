@@ -79,6 +79,81 @@ func TestParseResources(t *testing.T) {
 	}
 }
 
+// TestParseLabels tests the parseLabels function.
+func TestParseLabels(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:  "single label",
+			input: "topology.kubernetes.io/zone",
+			expected: []string{
+				"topology.kubernetes.io/zone",
+			},
+		},
+		{
+			name:  "multiple labels",
+			input: "topology.kubernetes.io/zone,node.kubernetes.io/instance-type",
+			expected: []string{
+				"topology.kubernetes.io/zone",
+				"node.kubernetes.io/instance-type",
+			},
+		},
+		{
+			name:  "with whitespace",
+			input: "zone , instance-type , nodepool",
+			expected: []string{
+				"zone",
+				"instance-type",
+				"nodepool",
+			},
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: nil,
+		},
+		{
+			name:     "only whitespace",
+			input:    "  ,  ,  ",
+			expected: []string{},
+		},
+		{
+			name:  "custom labels",
+			input: "company.com/team,company.com/env",
+			expected: []string{
+				"company.com/team",
+				"company.com/env",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseLabels(tt.input)
+
+			if tt.expected == nil {
+				if got != nil {
+					t.Errorf("parseLabels() = %v, want nil", got)
+				}
+				return
+			}
+
+			if len(got) != len(tt.expected) {
+				t.Fatalf("parseLabels() length = %d, want %d", len(got), len(tt.expected))
+			}
+
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("parseLabels()[%d] = %q, want %q", i, got[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
 // TestHealthEndpoint tests the /healthz liveness probe.
 func TestHealthEndpoint(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)

@@ -7,6 +7,8 @@ Prometheus exporter for Kubernetes cluster binpacking efficiency metrics. Tracks
 - **Resource-agnostic design**: Track any Kubernetes resource (cpu, memory, nvidia.com/gpu, etc.) via `--resources` flag
 - **Informer-based caching**: Zero API calls per Prometheus scrape — all data served from in-memory cache
 - **Per-node and cluster-wide metrics**: Individual node utilization plus cluster aggregates
+- **Label-based grouping**: Calculate binpacking metrics grouped by node labels (e.g., per-zone, per-instance-type) via `--label-groups` flag
+- **Cardinality control**: Disable per-node metrics via `--disable-node-metrics` to reduce metric cardinality by 90%+ in large clusters
 - **Init container support**: Correctly accounts for init container resource requests (uses max of init vs sum of regular containers)
 - **Configurable resync period**: Control informer cache refresh frequency
 - **Pure client-go**: No controller-runtime dependency, minimal footprint
@@ -26,6 +28,15 @@ Resource allocation metrics use a `resource` label to identify the resource type
 | `binpacking_cluster_allocated` | Gauge | `resource` | Cluster-wide total resource requested |
 | `binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide total allocatable resource |
 | `binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide allocation ratio |
+| `binpacking_cluster_node_count` | Gauge | - | Total number of nodes in the cluster |
+| `binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total resource requested on nodes with this label value |
+| `binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total allocatable resource on nodes with this label value |
+| `binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for nodes with this label value (0.0–1.0+) |
+| `binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Number of nodes with this label value |
+
+**Notes**:
+- Per-node metrics can be disabled via `--disable-node-metrics` to reduce cardinality in large clusters
+- Label group metrics are only emitted when `--label-groups` is configured
 
 ### Cache Metrics
 
@@ -48,6 +59,12 @@ binpacking_node_utilization_ratio{node="worker-1",resource="memory"} 0.5
 binpacking_cluster_allocated{resource="cpu"} 12.5
 binpacking_cluster_allocatable{resource="cpu"} 16
 binpacking_cluster_utilization_ratio{resource="cpu"} 0.78125
+binpacking_cluster_node_count 4
+
+binpacking_label_group_allocated{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 6.5
+binpacking_label_group_allocatable{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 8
+binpacking_label_group_utilization_ratio{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 0.8125
+binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_value="us-east-1a"} 2
 
 binpacking_cache_age_seconds 42
 ```
@@ -66,6 +83,12 @@ go run . --kubeconfig ~/.kube/config --debug
 # Track additional resources (e.g., GPU)
 go run . --kubeconfig ~/.kube/config --resources=cpu,memory,nvidia.com/gpu
 
+# Group by node labels (e.g., zone and instance type)
+go run . --kubeconfig ~/.kube/config --label-groups=topology.kubernetes.io/zone,node.kubernetes.io/instance-type
+
+# Disable per-node metrics to reduce cardinality (only cluster and label-group metrics)
+go run . --kubeconfig ~/.kube/config --disable-node-metrics --label-groups=topology.kubernetes.io/zone
+
 # Test metrics endpoint
 curl localhost:9101/metrics
 ```
@@ -78,8 +101,12 @@ curl localhost:9101/metrics
 | `--metrics-addr` | `:9101` | Address to serve metrics on |
 | `--metrics-path` | `/metrics` | HTTP path for metrics endpoint |
 | `--resources` | `cpu,memory` | Comma-separated list of resources to track |
-| `--debug` | `false` | Enable debug logging (pod filtering, resource calculations, informer events) |
+| `--label-groups` | (none) | Comma-separated list of node label keys to group by (e.g., `topology.kubernetes.io/zone,node.kubernetes.io/instance-type`) |
+| `--disable-node-metrics` | `false` | Disable per-node metrics to reduce cardinality (only emit cluster-wide and label-group metrics) |
+| `--log-level` | `info` | Log level: debug, info, warn, error |
+| `--log-format` | `json` | Log format: json, text |
 | `--resync-period` | `5m` | Informer cache resync period (e.g., 1m, 30s, 1h30m) |
+| `--list-page-size` | `500` | Number of resources to fetch per page during initial sync (0 = no pagination) |
 
 ### HTTP Endpoints
 

@@ -339,7 +339,7 @@ func TestBinpackingCollector_Collect(t *testing.T) {
 
 	// Create collector
 	resources := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, syncInfo)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, syncInfo)
 
 	// Collect metrics
 	ch := make(chan prometheus.Metric, 100)
@@ -460,7 +460,7 @@ func TestBinpackingCollector_PodFiltering(t *testing.T) {
 			logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 			resources := []corev1.ResourceName{corev1.ResourceCPU}
 
-			collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil)
+			collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
 
 			ch := make(chan prometheus.Metric, 100)
 			collector.Collect(ch)
@@ -498,7 +498,7 @@ func TestBinpackingCollector_Describe(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	resources := []corev1.ResourceName{corev1.ResourceCPU}
 
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
 
 	ch := make(chan *prometheus.Desc, 10)
 	collector.Describe(ch)
@@ -510,8 +510,8 @@ func TestBinpackingCollector_Describe(t *testing.T) {
 		descs = append(descs, d)
 	}
 
-	// Should have 7 metric descriptors
-	expectedDescCount := 7
+	// Should have 8 metric descriptors (3 node + 3 cluster + 1 cluster_node_count + 1 cache_age)
+	expectedDescCount := 8
 	if len(descs) != expectedDescCount {
 		t.Errorf("expected %d descriptors, got %d", expectedDescCount, len(descs))
 	}
@@ -525,7 +525,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 	t.Run("node lister error", func(t *testing.T) {
 		nodeLister := &fakeNodeLister{err: someError("node list failed")}
 		podLister := &fakePodLister{pods: []*corev1.Pod{}}
-		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil)
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
 
 		ch := make(chan prometheus.Metric, 10)
 		collector.Collect(ch)
@@ -547,7 +547,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 		nodes := []*corev1.Node{makeNode("node-1", "4", "8Gi")}
 		nodeLister := &fakeNodeLister{nodes: nodes}
 		podLister := &fakePodLister{err: someError("pod list failed")}
-		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil)
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
 
 		ch := make(chan prometheus.Metric, 10)
 		collector.Collect(ch)
@@ -574,7 +574,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 		podLister := &fakePodLister{pods: pods}
 
 		// Create collector with nil syncInfo
-		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil)
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
 
 		ch := make(chan prometheus.Metric, 10)
 		collector.Collect(ch)
@@ -612,7 +612,7 @@ func TestBinpackingCollector_DebugLogging(t *testing.T) {
 
 	nodeLister := &fakeNodeLister{nodes: nodes}
 	podLister := &fakePodLister{pods: pods}
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
 
 	ch := make(chan prometheus.Metric, 100)
 	collector.Collect(ch)
@@ -651,7 +651,7 @@ func TestBinpackingCollector_ZeroAllocatable(t *testing.T) {
 
 	nodeLister := &fakeNodeLister{nodes: nodes}
 	podLister := &fakePodLister{pods: pods}
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
 
 	ch := make(chan prometheus.Metric, 100)
 	collector.Collect(ch)
@@ -667,6 +667,355 @@ func TestBinpackingCollector_ZeroAllocatable(t *testing.T) {
 	if len(metrics) == 0 {
 		t.Error("Expected metrics even with zero allocatable")
 	}
+}
+
+// TestBinpackingCollector_LabelGrouping tests the label-based grouping metrics.
+func TestBinpackingCollector_LabelGrouping(t *testing.T) {
+	// Create nodes with different label values
+	nodes := []*corev1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-zone-a-1",
+				Labels: map[string]string{
+					"topology.kubernetes.io/zone": "us-east-1a",
+					"node.kubernetes.io/instance-type": "m5.large",
+				},
+			},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("4"),
+					corev1.ResourceMemory: resource.MustParse("8Gi"),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-zone-a-2",
+				Labels: map[string]string{
+					"topology.kubernetes.io/zone": "us-east-1a",
+					"node.kubernetes.io/instance-type": "m5.large",
+				},
+			},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("4"),
+					corev1.ResourceMemory: resource.MustParse("8Gi"),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-zone-b-1",
+				Labels: map[string]string{
+					"topology.kubernetes.io/zone": "us-east-1b",
+					"node.kubernetes.io/instance-type": "m5.xlarge",
+				},
+			},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("8"),
+					corev1.ResourceMemory: resource.MustParse("16Gi"),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-no-zone",
+				Labels: map[string]string{
+					"node.kubernetes.io/instance-type": "m5.large",
+				},
+				// Note: missing zone label
+			},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("4"),
+					corev1.ResourceMemory: resource.MustParse("8Gi"),
+				},
+			},
+		},
+	}
+
+	// Create pods scheduled on different nodes
+	pods := []*corev1.Pod{
+		// Pods in zone us-east-1a
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod-1",
+				Namespace: "default",
+			},
+			Spec: corev1.PodSpec{
+				NodeName: "node-zone-a-1",
+				Containers: []corev1.Container{
+					makeContainer("app", "1000m", "2Gi"),
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod-2",
+				Namespace: "default",
+			},
+			Spec: corev1.PodSpec{
+				NodeName: "node-zone-a-2",
+				Containers: []corev1.Container{
+					makeContainer("app", "2000m", "4Gi"),
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+		// Pods in zone us-east-1b
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod-3",
+				Namespace: "default",
+			},
+			Spec: corev1.PodSpec{
+				NodeName: "node-zone-b-1",
+				Containers: []corev1.Container{
+					makeContainer("app", "4000m", "8Gi"),
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+		// Pod on node without zone label
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod-4",
+				Namespace: "default",
+			},
+			Spec: corev1.PodSpec{
+				NodeName: "node-no-zone",
+				Containers: []corev1.Container{
+					makeContainer("app", "500m", "1Gi"),
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	nodeLister := &fakeNodeLister{nodes: nodes}
+	podLister := &fakePodLister{pods: pods}
+
+	// Configure label groupings
+	labelGroups := []string{"topology.kubernetes.io/zone", "node.kubernetes.io/instance-type"}
+	resources := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
+
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil)
+
+	ch := make(chan prometheus.Metric, 200)
+	collector.Collect(ch)
+	close(ch)
+
+	// Collect and categorize metrics
+	labelGroupMetrics := make(map[string]map[string]map[string]float64) // metricName -> labelKey -> labelValue -> value
+
+	for m := range ch {
+		// We need to extract the metric information
+		// For testing, we'll verify that label group metrics exist
+		desc := m.Desc().String()
+
+		// Check if this is a label group metric
+		if stringContains(desc, "binpacking_label_group_allocated") ||
+			stringContains(desc, "binpacking_label_group_allocatable") ||
+			stringContains(desc, "binpacking_label_group_utilization_ratio") {
+
+			// Just verify we got label group metrics
+			if labelGroupMetrics["found"] == nil {
+				labelGroupMetrics["found"] = make(map[string]map[string]float64)
+			}
+			labelGroupMetrics["found"]["exists"] = map[string]float64{"true": 1}
+		}
+	}
+
+	// Verify we got label group metrics
+	if labelGroupMetrics["found"] == nil {
+		t.Error("Expected label group metrics but got none")
+	}
+}
+
+// TestBinpackingCollector_DisableNodeMetrics tests that per-node metrics are not emitted when disabled.
+func TestBinpackingCollector_DisableNodeMetrics(t *testing.T) {
+	// Create test data
+	nodes := []*corev1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "node-1"},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("4"),
+					corev1.ResourceMemory: resource.MustParse("8Gi"),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "node-2"},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("4"),
+					corev1.ResourceMemory: resource.MustParse("8Gi"),
+				},
+			},
+		},
+	}
+
+	pods := []*corev1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-1", Namespace: "default"},
+			Spec: corev1.PodSpec{
+				NodeName:   "node-1",
+				Containers: []corev1.Container{makeContainer("app", "1000m", "2Gi")},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	nodeLister := &fakeNodeLister{nodes: nodes}
+	podLister := &fakePodLister{pods: pods}
+
+	resources := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
+
+	// Create collector with node metrics DISABLED
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, false, nil)
+
+	ch := make(chan prometheus.Metric, 100)
+	collector.Collect(ch)
+	close(ch)
+
+	// Count metric types
+	var nodeMetricCount, clusterMetricCount int
+	for m := range ch {
+		desc := m.Desc().String()
+		if stringContains(desc, "binpacking_node_") {
+			nodeMetricCount++
+		}
+		if stringContains(desc, "binpacking_cluster_") {
+			clusterMetricCount++
+		}
+	}
+
+	// Should have NO node metrics
+	if nodeMetricCount > 0 {
+		t.Errorf("Expected 0 node metrics when disabled, got %d", nodeMetricCount)
+	}
+
+	// Should still have cluster metrics (3 metrics × 2 resources + 1 node_count = 7)
+	expectedClusterMetrics := 7
+	if clusterMetricCount != expectedClusterMetrics {
+		t.Errorf("Expected %d cluster metrics, got %d", expectedClusterMetrics, clusterMetricCount)
+	}
+}
+
+// TestBinpackingCollector_EnableNodeMetrics tests that per-node metrics ARE emitted when enabled.
+func TestBinpackingCollector_EnableNodeMetrics(t *testing.T) {
+	// Create test data
+	nodes := []*corev1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "node-1"},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("4"),
+				},
+			},
+		},
+	}
+
+	pods := []*corev1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-1", Namespace: "default"},
+			Spec: corev1.PodSpec{
+				NodeName:   "node-1",
+				Containers: []corev1.Container{makeContainer("app", "1000m", "2Gi")},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	nodeLister := &fakeNodeLister{nodes: nodes}
+	podLister := &fakePodLister{pods: pods}
+
+	resources := []corev1.ResourceName{corev1.ResourceCPU}
+
+	// Create collector with node metrics ENABLED (default)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+
+	ch := make(chan prometheus.Metric, 100)
+	collector.Collect(ch)
+	close(ch)
+
+	// Count metric types
+	var nodeMetricCount int
+	for m := range ch {
+		desc := m.Desc().String()
+		if stringContains(desc, "binpacking_node_") {
+			nodeMetricCount++
+		}
+	}
+
+	// Should have node metrics (1 node × 3 metrics × 1 resource = 3)
+	expectedNodeMetrics := 3
+	if nodeMetricCount != expectedNodeMetrics {
+		t.Errorf("Expected %d node metrics when enabled, got %d", expectedNodeMetrics, nodeMetricCount)
+	}
+}
+
+// TestBinpackingCollector_LabelGrouping_NoLabels tests that no label metrics are emitted when no labels are configured.
+func TestBinpackingCollector_LabelGrouping_NoLabels(t *testing.T) {
+	nodes := []*corev1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-1",
+				Labels: map[string]string{
+					"zone": "us-east-1a",
+				},
+			},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("4"),
+				},
+			},
+		},
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	nodeLister := &fakeNodeLister{nodes: nodes}
+	podLister := &fakePodLister{pods: nil}
+
+	// No label groups configured
+	labelGroups := []string{}
+	resources := []corev1.ResourceName{corev1.ResourceCPU}
+
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil)
+
+	ch := make(chan prometheus.Metric, 50)
+	collector.Collect(ch)
+	close(ch)
+
+	// Verify no label group metrics
+	for m := range ch {
+		desc := m.Desc().String()
+		if stringContains(desc, "binpacking_label_group") {
+			t.Error("Expected no label group metrics when label groups not configured")
+		}
+	}
+}
+
+// Helper function to check if a string contains a substring.
+func stringContains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
+		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
+		containsAt(s, substr)))
+}
+
+func containsAt(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 // Helper function to create an error for testing.
