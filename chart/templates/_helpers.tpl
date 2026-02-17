@@ -13,8 +13,8 @@ Create a default fully qualified app name.
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- if or (contains $name .Release.Name) (contains .Release.Name $name) }}
+{{- $name | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
 {{- end }}
@@ -49,6 +49,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/*
 Create the name of the service account to use.
 */}}
+{{/*
+Whether leader election should be active.
+Auto-enabled when replicaCount > 1 (to prevent duplicate metrics),
+or explicitly via leaderElection.enabled.
+*/}}
+{{- define "binpacking-exporter.leaderElectionEnabled" -}}
+{{- if or .Values.leaderElection.enabled (gt (int .Values.replicaCount) 1) -}}
+true
+{{- end -}}
+{{- end }}
+
 {{- define "binpacking-exporter.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
 {{- default (include "binpacking-exporter.fullname" .) .Values.serviceAccount.name }}

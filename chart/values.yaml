@@ -43,6 +43,18 @@ labelGroups: []
 # -- Disable per-node metrics to reduce cardinality. Recommended for clusters with >100 nodes
 disableNodeMetrics: false
 
+leaderElection:
+  # -- Enable leader election for HA active-passive mode. Only the leader publishes binpacking metrics. Auto-enabled when `replicaCount > 1`
+  enabled: false
+  # -- Name of the Lease object used for leader election
+  leaseName: binpacking-exporter
+  # -- Duration that non-leader candidates will wait before attempting to acquire leadership
+  leaseDuration: 15s
+  # -- Duration that the leader will retry refreshing leadership before giving up
+  renewDeadline: 10s
+  # -- Duration between leader election retries
+  retryPeriod: 2s
+
 serviceAccount:
   # -- Create a service account for the exporter
   create: true
@@ -67,12 +79,25 @@ podResources:
     # -- Memory limit for the exporter pod
     memory: 128Mi
 
+# -- Priority class name for pod scheduling. Use an existing PriorityClass name
+priorityClassName: ""
+
 # -- Node selector for pod scheduling
 nodeSelector: {}
 # -- Tolerations for pod scheduling
 tolerations: []
 # -- Affinity rules for pod scheduling
 affinity: {}
+# -- Topology spread constraints for pod scheduling
+topologySpreadConstraints: []
+
+podDisruptionBudget:
+  # -- Create a PodDisruptionBudget resource
+  enabled: false
+  # -- Minimum number of pods that must remain available. Cannot be set together with `maxUnavailable`
+  minAvailable: ""
+  # -- Maximum number of pods that can be unavailable. Cannot be set together with `minAvailable`
+  maxUnavailable: ""
 
 service:
   # -- Kubernetes service type

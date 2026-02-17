@@ -26,6 +26,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "binpacking-exporter.serviceAccountName" . }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -45,6 +48,17 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 65532
+          {{- if include "binpacking-exporter.leaderElectionEnabled" . }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          {{- end }}
           args:
             - --metrics-addr=:{{ .Values.metricsPort }}
             - --metrics-path={{ .Values.metricsPath }}
@@ -58,6 +72,15 @@ spec:
             {{- end }}
             {{- if .Values.disableNodeMetrics }}
             - --disable-node-metrics
+            {{- end }}
+            {{- if include "binpacking-exporter.leaderElectionEnabled" . }}
+            - --leader-election
+            - --leader-election-id=$(POD_NAME)
+            - --leader-election-namespace=$(POD_NAMESPACE)
+            - --leader-election-lease-name={{ .Values.leaderElection.leaseName }}
+            - --leader-election-lease-duration={{ .Values.leaderElection.leaseDuration }}
+            - --leader-election-renew-deadline={{ .Values.leaderElection.renewDeadline }}
+            - --leader-election-retry-period={{ .Values.leaderElection.retryPeriod }}
             {{- end }}
           ports:
             - name: metrics
@@ -91,5 +114,9 @@ spec:
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -92,6 +92,36 @@
       "type": "boolean",
       "description": "Disable per-node metrics to reduce cardinality"
     },
+    "leaderElection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Leader election configuration for HA active-passive mode",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable leader election for HA mode"
+        },
+        "leaseName": {
+          "type": "string",
+          "description": "Name of the Lease object used for leader election"
+        },
+        "leaseDuration": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)(\\d+(ns|us|µs|ms|s|m|h))*$",
+          "description": "Duration that non-leader candidates will wait before attempting to acquire leadership"
+        },
+        "renewDeadline": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)(\\d+(ns|us|µs|ms|s|m|h))*$",
+          "description": "Duration that the leader will retry refreshing leadership before giving up"
+        },
+        "retryPeriod": {
+          "type": "string",
+          "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)(\\d+(ns|us|µs|ms|s|m|h))*$",
+          "description": "Duration between leader election retries"
+        }
+      }
+    },
     "serviceAccount": {
       "type": "object",
       "additionalProperties": false,
@@ -152,6 +182,10 @@
         }
       }
     },
+    "priorityClassName": {
+      "type": "string",
+      "description": "Priority class name for pod scheduling"
+    },
     "nodeSelector": {
       "type": "object",
       "description": "Node selector for pod scheduling"
@@ -163,6 +197,37 @@
     "affinity": {
       "type": "object",
       "description": "Affinity rules for pod scheduling"
+    },
+    "topologySpreadConstraints": {
+      "type": "array",
+      "description": "Topology spread constraints for pod scheduling"
+    },
+    "podDisruptionBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PodDisruptionBudget configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Create a PodDisruptionBudget resource"
+        },
+        "minAvailable": {
+          "description": "Minimum number of pods that must remain available (integer or percentage string)",
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "string", "pattern": "^[0-9]+%$" },
+            { "type": "string", "maxLength": 0 }
+          ]
+        },
+        "maxUnavailable": {
+          "description": "Maximum number of pods that can be unavailable (integer or percentage string)",
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "string", "pattern": "^[0-9]+%$" },
+            { "type": "string", "maxLength": 0 }
+          ]
+        }
+      }
     },
     "service": {
       "type": "object",

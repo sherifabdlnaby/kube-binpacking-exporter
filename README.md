@@ -4,6 +4,7 @@
 [![Release](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/release.yaml/badge.svg)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/release.yaml)
 [![GitHub Release](https://img.shields.io/github/v/release/sherifabdlnaby/kube-cluster-binpacking-exporter)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/sherifabdlnaby/kube-cluster-binpacking-exporter)](go.mod)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-%3E%3D%201.29-blue?logo=kubernetes&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter)
 [![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](#building)
 [![License](https://img.shields.io/github/license/sherifabdlnaby/kube-cluster-binpacking-exporter)](LICENSE)
 

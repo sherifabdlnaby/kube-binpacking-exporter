@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -339,7 +340,7 @@ func TestBinpackingCollector_Collect(t *testing.T) {
 
 	// Create collector
 	resources := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, syncInfo)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, syncInfo, nil)
 
 	// Collect metrics
 	ch := make(chan prometheus.Metric, 100)
@@ -460,7 +461,7 @@ func TestBinpackingCollector_PodFiltering(t *testing.T) {
 			logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 			resources := []corev1.ResourceName{corev1.ResourceCPU}
 
-			collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+			collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
 			ch := make(chan prometheus.Metric, 100)
 			collector.Collect(ch)
@@ -498,7 +499,7 @@ func TestBinpackingCollector_Describe(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 	resources := []corev1.ResourceName{corev1.ResourceCPU}
 
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
 	ch := make(chan *prometheus.Desc, 10)
 	collector.Describe(ch)
@@ -525,7 +526,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 	t.Run("node lister error", func(t *testing.T) {
 		nodeLister := &fakeNodeLister{err: someError("node list failed")}
 		podLister := &fakePodLister{pods: []*corev1.Pod{}}
-		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
 		ch := make(chan prometheus.Metric, 10)
 		collector.Collect(ch)
@@ -547,7 +548,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 		nodes := []*corev1.Node{makeNode("node-1", "4", "8Gi")}
 		nodeLister := &fakeNodeLister{nodes: nodes}
 		podLister := &fakePodLister{err: someError("pod list failed")}
-		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
 		ch := make(chan prometheus.Metric, 10)
 		collector.Collect(ch)
@@ -574,7 +575,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 		podLister := &fakePodLister{pods: pods}
 
 		// Create collector with nil syncInfo
-		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
 		ch := make(chan prometheus.Metric, 10)
 		collector.Collect(ch)
@@ -612,7 +613,7 @@ func TestBinpackingCollector_DebugLogging(t *testing.T) {
 
 	nodeLister := &fakeNodeLister{nodes: nodes}
 	podLister := &fakePodLister{pods: pods}
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
 	ch := make(chan prometheus.Metric, 100)
 	collector.Collect(ch)
@@ -651,7 +652,7 @@ func TestBinpackingCollector_ZeroAllocatable(t *testing.T) {
 
 	nodeLister := &fakeNodeLister{nodes: nodes}
 	podLister := &fakePodLister{pods: pods}
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
 	ch := make(chan prometheus.Metric, 100)
 	collector.Collect(ch)
@@ -802,7 +803,7 @@ func TestBinpackingCollector_LabelGrouping(t *testing.T) {
 	labelGroups := []string{"topology.kubernetes.io/zone", "node.kubernetes.io/instance-type"}
 	resources := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
 
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil, nil)
 
 	ch := make(chan prometheus.Metric, 200)
 	collector.Collect(ch)
@@ -877,7 +878,7 @@ func TestBinpackingCollector_DisableNodeMetrics(t *testing.T) {
 	resources := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
 
 	// Create collector with node metrics DISABLED
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, false, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, false, nil, nil)
 
 	ch := make(chan prometheus.Metric, 100)
 	collector.Collect(ch)
@@ -939,7 +940,7 @@ func TestBinpackingCollector_EnableNodeMetrics(t *testing.T) {
 	resources := []corev1.ResourceName{corev1.ResourceCPU}
 
 	// Create collector with node metrics ENABLED (default)
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
 	ch := make(chan prometheus.Metric, 100)
 	collector.Collect(ch)
@@ -987,7 +988,7 @@ func TestBinpackingCollector_LabelGrouping_NoLabels(t *testing.T) {
 	labelGroups := []string{}
 	resources := []corev1.ResourceName{corev1.ResourceCPU}
 
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil)
+	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil, nil)
 
 	ch := make(chan prometheus.Metric, 50)
 	collector.Collect(ch)
@@ -999,6 +1000,171 @@ func TestBinpackingCollector_LabelGrouping_NoLabels(t *testing.T) {
 		if stringContains(desc, "binpacking_label_group") {
 			t.Error("Expected no label group metrics when label groups not configured")
 		}
+	}
+}
+
+// TestBinpackingCollector_LeaderElection_Disabled verifies that when isLeader is nil
+// (leader election not enabled), all metrics are emitted and no leader_status metric appears.
+func TestBinpackingCollector_LeaderElection_Disabled(t *testing.T) {
+	nodes := []*corev1.Node{makeNode("node-1", "4", "8Gi")}
+	pods := []*corev1.Pod{
+		makePodWithResources("default", "pod-1", "node-1", corev1.PodRunning,
+			[]corev1.Container{makeContainer("app", "1", "2Gi")}, nil),
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	resources := []corev1.ResourceName{corev1.ResourceCPU}
+	syncInfo := &SyncInfo{LastSyncTime: time.Now().Add(-10 * time.Second)}
+
+	collector := NewBinpackingCollector(
+		&fakeNodeLister{nodes: nodes}, &fakePodLister{pods: pods},
+		logger, resources, nil, true, syncInfo, nil, // isLeader = nil
+	)
+
+	ch := make(chan prometheus.Metric, 100)
+	collector.Collect(ch)
+	close(ch)
+
+	var hasLeaderStatus, hasClusterAllocated, hasCacheAge bool
+	for m := range ch {
+		desc := m.Desc().String()
+		if contains(desc, "binpacking_leader_status") {
+			hasLeaderStatus = true
+		}
+		if contains(desc, "binpacking_cluster_allocated") {
+			hasClusterAllocated = true
+		}
+		if contains(desc, "binpacking_cache_age_seconds") {
+			hasCacheAge = true
+		}
+	}
+
+	if hasLeaderStatus {
+		t.Error("leader_status metric should NOT be emitted when leader election is disabled")
+	}
+	if !hasClusterAllocated {
+		t.Error("cluster_allocated metric should be emitted when leader election is disabled")
+	}
+	if !hasCacheAge {
+		t.Error("cache_age metric should be emitted when leader election is disabled")
+	}
+}
+
+// TestBinpackingCollector_LeaderElection_IsLeader verifies that when this instance is the leader,
+// all binpacking metrics are emitted along with leader_status = 1.
+func TestBinpackingCollector_LeaderElection_IsLeader(t *testing.T) {
+	nodes := []*corev1.Node{makeNode("node-1", "4", "8Gi")}
+	pods := []*corev1.Pod{
+		makePodWithResources("default", "pod-1", "node-1", corev1.PodRunning,
+			[]corev1.Container{makeContainer("app", "1", "2Gi")}, nil),
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	resources := []corev1.ResourceName{corev1.ResourceCPU}
+	syncInfo := &SyncInfo{LastSyncTime: time.Now().Add(-10 * time.Second)}
+
+	isLeader := new(atomic.Bool)
+	isLeader.Store(true) // this instance IS the leader
+
+	collector := NewBinpackingCollector(
+		&fakeNodeLister{nodes: nodes}, &fakePodLister{pods: pods},
+		logger, resources, nil, true, syncInfo, isLeader,
+	)
+
+	ch := make(chan prometheus.Metric, 100)
+	collector.Collect(ch)
+	close(ch)
+
+	var hasLeaderStatus, hasClusterAllocated, hasNodeAllocated, hasCacheAge bool
+	for m := range ch {
+		desc := m.Desc().String()
+		if contains(desc, "binpacking_leader_status") {
+			hasLeaderStatus = true
+		}
+		if contains(desc, "binpacking_cluster_allocated") {
+			hasClusterAllocated = true
+		}
+		if contains(desc, "binpacking_node_allocated") {
+			hasNodeAllocated = true
+		}
+		if contains(desc, "binpacking_cache_age_seconds") {
+			hasCacheAge = true
+		}
+	}
+
+	if !hasLeaderStatus {
+		t.Error("leader_status metric should be emitted when leader election is enabled")
+	}
+	if !hasClusterAllocated {
+		t.Error("cluster_allocated should be emitted when this instance is leader")
+	}
+	if !hasNodeAllocated {
+		t.Error("node_allocated should be emitted when this instance is leader")
+	}
+	if !hasCacheAge {
+		t.Error("cache_age should be emitted when this instance is leader")
+	}
+}
+
+// TestBinpackingCollector_LeaderElection_IsStandby verifies that when this instance is NOT the leader,
+// only cache_age and leader_status (= 0) are emitted — no binpacking metrics.
+func TestBinpackingCollector_LeaderElection_IsStandby(t *testing.T) {
+	nodes := []*corev1.Node{makeNode("node-1", "4", "8Gi")}
+	pods := []*corev1.Pod{
+		makePodWithResources("default", "pod-1", "node-1", corev1.PodRunning,
+			[]corev1.Container{makeContainer("app", "1", "2Gi")}, nil),
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	resources := []corev1.ResourceName{corev1.ResourceCPU}
+	syncInfo := &SyncInfo{LastSyncTime: time.Now().Add(-10 * time.Second)}
+
+	isLeader := new(atomic.Bool)
+	isLeader.Store(false) // this instance is standby
+
+	collector := NewBinpackingCollector(
+		&fakeNodeLister{nodes: nodes}, &fakePodLister{pods: pods},
+		logger, resources, nil, true, syncInfo, isLeader,
+	)
+
+	ch := make(chan prometheus.Metric, 100)
+	collector.Collect(ch)
+	close(ch)
+
+	var hasLeaderStatus, hasClusterAllocated, hasNodeAllocated, hasCacheAge bool
+	var metricCount int
+	for m := range ch {
+		metricCount++
+		desc := m.Desc().String()
+		if contains(desc, "binpacking_leader_status") {
+			hasLeaderStatus = true
+		}
+		if contains(desc, "binpacking_cluster_allocated") {
+			hasClusterAllocated = true
+		}
+		if contains(desc, "binpacking_node_allocated") {
+			hasNodeAllocated = true
+		}
+		if contains(desc, "binpacking_cache_age_seconds") {
+			hasCacheAge = true
+		}
+	}
+
+	if !hasLeaderStatus {
+		t.Error("leader_status should be emitted on standby")
+	}
+	if !hasCacheAge {
+		t.Error("cache_age should be emitted on standby")
+	}
+	if hasClusterAllocated {
+		t.Error("cluster_allocated should NOT be emitted on standby")
+	}
+	if hasNodeAllocated {
+		t.Error("node_allocated should NOT be emitted on standby")
+	}
+	// Should only have 2 metrics: cache_age + leader_status
+	if metricCount != 2 {
+		t.Errorf("standby should emit exactly 2 metrics (cache_age + leader_status), got %d", metricCount)
 	}
 }
 

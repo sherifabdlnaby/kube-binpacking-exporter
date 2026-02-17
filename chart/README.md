@@ -24,7 +24,7 @@ helm install binpacking-exporter ./chart
 
 ## Prerequisites
 
-- Kubernetes 1.19+
+- Kubernetes 1.29+
 - Helm 3.0+
 
 ## Installing the Chart

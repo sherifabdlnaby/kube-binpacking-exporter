@@ -29,10 +29,10 @@ type SyncInfo struct {
 	PodSynced    func() bool
 }
 
-func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath string, resyncPeriod time.Duration, listPageSize int64) (listerscorev1.NodeLister, listerscorev1.PodLister, ReadyChecker, *SyncInfo, error) {
+func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath string, resyncPeriod time.Duration, listPageSize int64) (listerscorev1.NodeLister, listerscorev1.PodLister, ReadyChecker, *SyncInfo, kubernetes.Interface, error) {
 	config, configSource, err := buildConfig(kubeconfigPath)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("building kubeconfig: %w", err)
+		return nil, nil, nil, nil, nil, fmt.Errorf("building kubeconfig: %w", err)
 	}
 
 	logger.Info("kubernetes client config",
@@ -43,13 +43,13 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("creating kubernetes client: %w", err)
+		return nil, nil, nil, nil, nil, fmt.Errorf("creating kubernetes client: %w", err)
 	}
 
 	// Test connectivity before setting up informers
 	serverVersion, err := clientset.Discovery().ServerVersion()
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("failed to connect to kubernetes API: %w", err)
+		return nil, nil, nil, nil, nil, fmt.Errorf("failed to connect to kubernetes API: %w", err)
 	}
 	logger.Info("connected to kubernetes API",
 		"version", serverVersion.String(),
@@ -100,7 +100,7 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 			},
 		})
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("adding node event handler: %w", err)
+			return nil, nil, nil, nil, nil, fmt.Errorf("adding node event handler: %w", err)
 		}
 
 		_, err = podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -118,7 +118,7 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 			},
 		})
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("adding pod event handler: %w", err)
+			return nil, nil, nil, nil, nil, fmt.Errorf("adding pod event handler: %w", err)
 		}
 	}
 
@@ -151,7 +151,7 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 	}()
 
 	if !cache.WaitForCacheSync(syncCtx.Done(), nodeInformer.Informer().HasSynced, podInformer.Informer().HasSynced) {
-		return nil, nil, nil, nil, fmt.Errorf("failed to sync informer caches within timeout")
+		return nil, nil, nil, nil, nil, fmt.Errorf("failed to sync informer caches within timeout")
 	}
 
 	logger.Info("informer cache synced successfully")
@@ -169,7 +169,7 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 		PodSynced:    podInformer.Informer().HasSynced,
 	}
 
-	return nodeLister, podLister, readyChecker, syncInfo, nil
+	return nodeLister, podLister, readyChecker, syncInfo, clientset, nil
 }
 
 func buildConfig(kubeconfigPath string) (*rest.Config, string, error) {

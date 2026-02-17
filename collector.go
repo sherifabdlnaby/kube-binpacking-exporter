@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -72,6 +73,11 @@ var (
 		"Time since last informer cache sync",
 		nil, nil,
 	)
+	leaderStatus = prometheus.NewDesc(
+		"binpacking_leader_status",
+		"Whether this instance is the leader (1) or standby (0). Only present when leader election is enabled",
+		nil, nil,
+	)
 )
 
 // BinpackingCollector implements prometheus.Collector using informer caches.
@@ -83,6 +89,7 @@ type BinpackingCollector struct {
 	labelGroups       []string
 	enableNodeMetrics bool
 	syncInfo          *SyncInfo
+	isLeader          *atomic.Bool // nil = leader election disabled (always emit); non-nil = check value
 }
 
 // calculatePodRequest computes the effective resource request for a pod.
@@ -147,6 +154,7 @@ func NewBinpackingCollector(
 	labelGroups []string,
 	enableNodeMetrics bool,
 	syncInfo *SyncInfo,
+	isLeader *atomic.Bool,
 ) *BinpackingCollector {
 	return &BinpackingCollector{
 		nodeLister:        nodeLister,
@@ -156,6 +164,7 @@ func NewBinpackingCollector(
 		labelGroups:       labelGroups,
 		enableNodeMetrics: enableNodeMetrics,
 		syncInfo:          syncInfo,
+		isLeader:          isLeader,
 	}
 }
 
@@ -176,6 +185,9 @@ func (c *BinpackingCollector) Describe(ch chan<- *prometheus.Desc) {
 		ch <- labelGroupNodeCount
 	}
 	ch <- cacheAge
+	if c.isLeader != nil {
+		ch <- leaderStatus
+	}
 }
 
 func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
@@ -183,6 +195,15 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 	if c.syncInfo != nil {
 		ageSeconds := time.Since(c.syncInfo.LastSyncTime).Seconds()
 		ch <- prometheus.MustNewConstMetric(cacheAge, prometheus.GaugeValue, ageSeconds)
+	}
+
+	// Leader election gate: when enabled, emit leader_status and return early if standby.
+	if c.isLeader != nil {
+		leader := c.isLeader.Load()
+		ch <- prometheus.MustNewConstMetric(leaderStatus, prometheus.GaugeValue, boolToFloat64(leader))
+		if !leader {
+			return // standby: only cache_age + leader_status
+		}
 	}
 
 	nodes, err := c.nodeLister.List(labels.Everything())
@@ -398,4 +419,11 @@ func (c *BinpackingCollector) collectLabelGroupMetrics(ch chan<- prometheus.Metr
 			ch <- prometheus.MustNewConstMetric(labelGroupNodeCount, prometheus.GaugeValue, float64(len(groupNodes)), labelKey, labelValue)
 		}
 	}
+}
+
+func boolToFloat64(b bool) float64 {
+	if b {
+		return 1
+	}
+	return 0
 }
