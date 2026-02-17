@@ -24,7 +24,7 @@ Prometheus exporter that monitors Kubernetes cluster binpacking efficiency. Comp
 | `collector.go` | Prometheus collector | `Collect()` - computes metrics, `calculatePodRequest()` - init container logic |
 | `Dockerfile` | Container image | Multi-stage: `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |
 | `chart/` | Helm chart | RBAC, ServiceMonitor, published to OCI registry at ghcr.io |
-| `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint/test, `release.yaml` - multi-arch Docker + GoReleaser + Helm OCI push, `auto-release.yaml` - semantic versioning from PR labels |
+| `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint/test, `release.yaml` - PR merge → semver tag → GoReleaser + Docker + Helm OCI push (single workflow) |
 
 ## Metrics Exported
 
@@ -117,6 +117,27 @@ See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, help
 - **Helm templates**: Use `binpacking-exporter.*` helper prefix for consistency
 - **Metrics**: All prefixed with `binpacking_` for namespacing
 - **Port**: 9101 (avoids collision with node-exporter on 9100, Prometheus on 9090)
+
+### Commit Messages
+Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(scope): description`
+
+| Type | When to use | Changelog group |
+|------|-------------|-----------------|
+| `feat` | New functionality | New Features |
+| `fix` | Bug fix | Bug Fixes |
+| `refactor` | Code restructuring (no behavior change) | Bug Fixes |
+| `perf` | Performance improvement | Performance |
+| `sec` | Security fix or update | Security |
+| `docs` | Documentation only | Excluded |
+| `test` | Test additions/changes | Excluded |
+| `ci` | CI/CD changes | Excluded |
+| `chore` | Dependency updates, maintenance | Excluded |
+| `build` | Build system changes | Excluded |
+
+- **Breaking changes**: Add `!` after the type — `feat!: remove deprecated flag` or `fix(api)!: change response format`. These appear in a dedicated "Breaking Changes" group at the top of the changelog regardless of type.
+- **Scope** is optional: `feat(helm): add PDB support` or just `feat: add PDB support`
+- Keep the subject line under 72 characters
+- Use imperative mood: "add feature" not "added feature"
 
 ### Configuration
 - **Defaults optimized for production**: 5m resync, info logging, port 9101
