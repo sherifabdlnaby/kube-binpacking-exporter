@@ -79,61 +79,18 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
-<head>
-    <title>Kube Cluster Binpacking Exporter</title>
-    <style>
-        body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
-        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
-        h2 { color: #555; margin-top: 30px; }
-        .endpoint { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #007bff; }
-        .endpoint-title { font-weight: bold; color: #007bff; font-size: 1.1em; }
-        .endpoint-desc { margin-top: 5px; color: #666; }
-        a { color: #007bff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .version { color: #999; font-size: 0.9em; }
-    </style>
-</head>
+<head><title>Kube Cluster Binpacking Exporter</title></head>
 <body>
-    <h1>Kube Cluster Binpacking Exporter</h1>
-    <p class="version">Version: %s</p>
-    <p>Prometheus exporter for Kubernetes cluster binpacking efficiency metrics. Tracks resource allocation by comparing pod requests against node allocatable capacity.</p>
-
-    <h2>Endpoints</h2>
-
-    <div class="endpoint">
-        <div class="endpoint-title"><a href="%s">%s</a></div>
-        <div class="endpoint-desc">Prometheus metrics endpoint. Exports binpacking efficiency metrics for CPU, memory, and other resources.</div>
-    </div>
-
-    <div class="endpoint">
-        <div class="endpoint-title"><a href="/sync">/sync</a></div>
-        <div class="endpoint-desc">Cache synchronization status. Shows last sync time, cache age, resync period, and per-informer sync state (JSON).</div>
-    </div>
-
-    <div class="endpoint">
-        <div class="endpoint-title"><a href="/healthz">/healthz</a></div>
-        <div class="endpoint-desc">Liveness probe. Returns 200 if the process is alive.</div>
-    </div>
-
-    <div class="endpoint">
-        <div class="endpoint-title"><a href="/readyz">/readyz</a></div>
-        <div class="endpoint-desc">Readiness probe. Returns 200 if informer cache is synced and ready to serve metrics, 503 otherwise.</div>
-    </div>
-
-    <h2>Configuration</h2>
-    <ul>
-        <li><strong>Resources tracked:</strong> %s</li>
-        <li><strong>Resync period:</strong> %s</li>
-        <li><strong>Debug mode:</strong> %t</li>
-    </ul>
-
-    <h2>Links</h2>
-    <ul>
-        <li><a href="https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter" target="_blank">GitHub Repository</a></li>
-        <li><a href="https://prometheus.io/docs/instrumenting/exporters/" target="_blank">Prometheus Exporters Documentation</a></li>
-    </ul>
+<h1>Kube Cluster Binpacking Exporter</h1>
+<p>Version: %s</p>
+<ul>
+<li><a href="%s">%s</a> - Prometheus metrics</li>
+<li><a href="/sync">/sync</a> - Cache sync status (JSON)</li>
+<li><a href="/healthz">/healthz</a> - Liveness probe</li>
+<li><a href="/readyz">/readyz</a> - Readiness probe</li>
+</ul>
 </body>
-</html>`, version, metricsPath, metricsPath, resourceCSV, resyncPeriod, debug)
+</html>`, version, metricsPath, metricsPath)
 	})
 
 	mux.Handle(metricsPath, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))

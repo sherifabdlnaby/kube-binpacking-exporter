@@ -1,2 +1,6 @@
 # Compiled binary
 kube-cluster-binpacking-exporter
+
+# Test coverage files
+coverage.out
+coverage.html
