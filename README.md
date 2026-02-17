@@ -1,5 +1,12 @@
 # Kube Cluster Binpacking Exporter
 
+[![CI](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/ci.yaml)
+[![Release](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/release.yaml/badge.svg)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/release.yaml)
+[![GitHub Release](https://img.shields.io/github/v/release/sherifabdlnaby/kube-cluster-binpacking-exporter)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/releases/latest)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/sherifabdlnaby/kube-cluster-binpacking-exporter)](go.mod)
+[![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](#building)
+[![License](https://img.shields.io/github/license/sherifabdlnaby/kube-cluster-binpacking-exporter)](LICENSE)
+
 Prometheus exporter for Kubernetes cluster binpacking efficiency metrics. Tracks resource allocation (CPU, memory, or any custom resource) by comparing pod requests against node allocatable capacity.
 
 ## Features
