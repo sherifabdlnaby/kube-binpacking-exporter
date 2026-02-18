@@ -1,5 +1,5 @@
 apiVersion: v2
-name: kube-cluster-binpacking-exporter
+name: kube-binpacking-exporter
 description: Prometheus exporter for Kubernetes cluster binpacking efficiency
 type: application
 kubeVersion: ">= 1.29.0-0"
@@ -18,5 +18,5 @@ maintainers:
   - name: sherifabdlnaby
     url: https://github.com/sherifabdlnaby
 sources:
-  - https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter
-home: https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter
+  - https://github.com/sherifabdlnaby/kube-binpacking-exporter
+home: https://github.com/sherifabdlnaby/kube-binpacking-exporter

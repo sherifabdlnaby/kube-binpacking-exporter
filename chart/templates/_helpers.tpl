@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "binpacking-exporter.name" -}}
+{{- define "kube-binpacking-exporter.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "binpacking-exporter.fullname" -}}
+{{- define "kube-binpacking-exporter.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "binpacking-exporter.chart" -}}
+{{- define "kube-binpacking-exporter.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels.
 */}}
-{{- define "binpacking-exporter.labels" -}}
-helm.sh/chart: {{ include "binpacking-exporter.chart" . }}
-{{ include "binpacking-exporter.selectorLabels" . }}
+{{- define "kube-binpacking-exporter.labels" -}}
+helm.sh/chart: {{ include "kube-binpacking-exporter.chart" . }}
+{{ include "kube-binpacking-exporter.selectorLabels" . }}
 app.kubernetes.io/version: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -41,8 +41,8 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels.
 */}}
-{{- define "binpacking-exporter.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "binpacking-exporter.name" . }}
+{{- define "kube-binpacking-exporter.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "kube-binpacking-exporter.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
@@ -54,15 +54,15 @@ Whether leader election should be active.
 Auto-enabled when replicaCount > 1 (to prevent duplicate metrics),
 or explicitly via leaderElection.enabled.
 */}}
-{{- define "binpacking-exporter.leaderElectionEnabled" -}}
+{{- define "kube-binpacking-exporter.leaderElectionEnabled" -}}
 {{- if or .Values.leaderElection.enabled (gt (int .Values.replicaCount) 1) -}}
 true
 {{- end -}}
 {{- end }}
 
-{{- define "binpacking-exporter.serviceAccountName" -}}
+{{- define "kube-binpacking-exporter.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "binpacking-exporter.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "kube-binpacking-exporter.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

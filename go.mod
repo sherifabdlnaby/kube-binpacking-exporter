@@ -1,4 +1,4 @@
-module github.com/sherifabdlnaby/kube-cluster-binpacking-exporter
+module github.com/sherifabdlnaby/kube-binpacking-exporter
 
 go 1.26.0
 

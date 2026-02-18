@@ -1,14 +1,14 @@
-# Kube Cluster Binpacking Exporter (KCP)
+# Kube Binpacking Exporter (KBE)
 
-[![CI](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/ci.yaml)
-[![Release](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/release.yaml/badge.svg)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/release.yaml)
-[![Trivy](https://img.shields.io/badge/trivy-scanned-blue?logo=aquasecurity&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/security/code-scanning?query=tool%3ATrivy)
-[![CodeQL](https://img.shields.io/badge/codeql-analyzed-blue?logo=github&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/security/code-scanning?query=tool%3ACodeQL)
-[![GitHub Release](https://img.shields.io/github/v/release/sherifabdlnaby/kube-cluster-binpacking-exporter)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/releases/latest)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/sherifabdlnaby/kube-cluster-binpacking-exporter)](go.mod)
-[![Kubernetes](https://img.shields.io/badge/kubernetes-%3E%3D%201.29-blue?logo=kubernetes&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter)
+[![CI](https://github.com/sherifabdlnaby/kube-binpacking-exporter/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/actions/workflows/ci.yaml)
+[![Release](https://github.com/sherifabdlnaby/kube-binpacking-exporter/actions/workflows/release.yaml/badge.svg)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/actions/workflows/release.yaml)
+[![Trivy](https://img.shields.io/badge/trivy-scanned-blue?logo=aquasecurity&logoColor=white)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/security/code-scanning?query=tool%3ATrivy)
+[![CodeQL](https://img.shields.io/badge/codeql-analyzed-blue?logo=github&logoColor=white)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/security/code-scanning?query=tool%3ACodeQL)
+[![GitHub Release](https://img.shields.io/github/v/release/sherifabdlnaby/kube-binpacking-exporter)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/releases/latest)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/sherifabdlnaby/kube-binpacking-exporter)](go.mod)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-%3E%3D%201.29-blue?logo=kubernetes&logoColor=white)](https://github.com/sherifabdlnaby/kube-binpacking-exporter)
 [![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](#development)
-[![License](https://img.shields.io/github/license/sherifabdlnaby/kube-cluster-binpacking-exporter)](LICENSE)
+[![License](https://img.shields.io/github/license/sherifabdlnaby/kube-binpacking-exporter)](LICENSE)
 
 Export straight-forward metrics to track Kubernetes cluster nodes binpacking efficiency, across individual nodes, by node groups (via Labels), or across the entire cluster, that are easier to aggregate over longer periods of time.
 
@@ -21,9 +21,9 @@ Export straight-forward metrics to track Kubernetes cluster nodes binpacking eff
     2. Queries get extremely complex ( e.g exclude failed & completed pods, handle init containers, complex `joins` to group by node labels )
     3. Some O11Y tools ( looking at you DD ) query language lacks the flexibility to accurately combine and aggregate these metrics.
 
-- **How is KCP better?**: Mirrors the cluster state and returns an atomic snapshot of the cluster binpacking state on each scrape. It's like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop.
+- **How is KBE better?**: Mirrors the cluster state and returns an atomic snapshot of the cluster binpacking state on each scrape. It's like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop.
 
-### Who typically uses KCP?
+### Who typically uses KBE?
 
 Anyone 🤷🏻‍♂️ But specifically Platform Engineers, and Cluster Administrators trying to optimize their Cluster Binpacking efficiency (e.g tinkering with [karpenter](https://karpenter.sh/docs/concepts/scheduling/) configurations) and want to track progress over time.
 
@@ -32,7 +32,7 @@ Anyone 🤷🏻‍♂️ But specifically Platform Engineers, and Cluster Admini
 **Helm (Recommended):**
 ```bash
 helm install binpacking-exporter \
-  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+  oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter \
   --version <check-releases>
 ```
 
@@ -55,7 +55,7 @@ Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how 
 
 ### Out of scope
 
-KCP's only concern is **Are Pods' _requests_ being satisfied in the most efficient way possible**. Tracking if pods are setting the correct requests, and if they are under-utilizing requests is out of the scope of this tool.
+KBE's only concern is **Are Pods' _requests_ being satisfied in the most efficient way possible**. Tracking if pods are setting the correct requests, and if they are under-utilizing requests is out of the scope of this tool.
 
 ## Metrics
 
@@ -136,7 +136,7 @@ Defaults to port `:9101`
 
 ```bash
 # Build binary
-go build -o kube-cluster-binpacking-exporter .
+go build -o kube-binpacking-exporter .
 
 # Build Docker image
 docker build -t binpacking-exporter:dev .

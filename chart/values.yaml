@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   # -- Container image repository
-  repository: ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter
+  repository: ghcr.io/sherifabdlnaby/kube-binpacking-exporter
   # -- Image pull policy. Valid values: `Always`, `IfNotPresent`, `Never`
   pullPolicy: IfNotPresent
   # -- Image tag. Defaults to the chart's `appVersion` when empty

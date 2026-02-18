@@ -66,7 +66,7 @@ func main() {
 	level := parseLogLevel(logLevel)
 	handler := createLogHandler(logFormat, level)
 	logger := slog.New(handler)
-	logger.Info("starting kube-cluster-binpacking-exporter", "version", version, "log_level", logLevel, "log_format", logFormat)
+	logger.Info("starting kube-binpacking-exporter", "version", version, "log_level", logLevel, "log_format", logFormat)
 
 	resources := parseResources(resourceCSV)
 	logger.Info("tracking resources", "resources", resourceCSV)
@@ -157,9 +157,9 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
-<head><title>Kube Cluster Binpacking Exporter</title></head>
+<head><title>Kube Binpacking Exporter</title></head>
 <body>
-<h1>Kube Cluster Binpacking Exporter</h1>
+<h1>Kube Binpacking Exporter</h1>
 <p>Version: %s</p>
 <ul>
 <li><a href="%s">%s</a> - Prometheus metrics</li>

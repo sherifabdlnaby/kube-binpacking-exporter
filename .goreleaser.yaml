@@ -15,7 +15,7 @@ builds:
       - arm64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-    binary: kube-cluster-binpacking-exporter
+    binary: kube-binpacking-exporter
 
 archives:
   - formats: [tar.gz]
@@ -41,7 +41,7 @@ checksum:
 dockers_v2:
   - dockerfile: Dockerfile.release
     images:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter"
+      - "ghcr.io/sherifabdlnaby/kube-binpacking-exporter"
     tags:
       - "{{ .Version }}"
       - "{{ .Major }}.{{ .Minor }}"
@@ -113,7 +113,7 @@ changelog:
 release:
   github:
     owner: sherifabdlnaby
-    name: kube-cluster-binpacking-exporter
+    name: kube-binpacking-exporter
   draft: false
   prerelease: auto
   mode: replace
@@ -121,7 +121,7 @@ release:
     ## `{{.Tag}}` 🚀
 
   footer: |
-    **Full Changelog**: https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/compare/{{.PreviousTag}}...{{.Tag}}
+    **Full Changelog**: https://github.com/sherifabdlnaby/kube-binpacking-exporter/compare/{{.PreviousTag}}...{{.Tag}}
 
     ---
 
@@ -130,7 +130,7 @@ release:
     **Helm (Recommended):**
     ```bash
     helm install binpacking-exporter \
-      oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+      oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter \
       --version {{.Version}}
     ```
 
@@ -140,7 +140,7 @@ release:
     **Docker:**
     ```bash
     docker run -v ~/.kube/config:/kubeconfig:ro \
-      ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{.Tag}} \
+      ghcr.io/sherifabdlnaby/kube-binpacking-exporter:{{.Tag}} \
       --kubeconfig=/kubeconfig
     ```
 
@@ -148,6 +148,6 @@ release:
     ```bash
     cosign verify \
       --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-      --certificate-identity-regexp="https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/.*" \
-      ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{.Tag}}
+      --certificate-identity-regexp="https://github.com/sherifabdlnaby/kube-binpacking-exporter/.*" \
+      ghcr.io/sherifabdlnaby/kube-binpacking-exporter:{{.Tag}}
     ```

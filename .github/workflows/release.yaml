@@ -226,8 +226,8 @@ jobs:
           CHART_VERSION="${{ steps.version.outputs.version }}"
           helm package chart/ --version "${CHART_VERSION}" --app-version "${{ steps.version.outputs.new_tag }}"
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-          helm push "kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
-          echo "Published oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
+          helm push "kube-binpacking-exporter-${CHART_VERSION}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
+          echo "Published oci://ghcr.io/${{ github.repository_owner }}/charts/kube-binpacking-exporter:${CHART_VERSION}"
 
       # ── Publish release ──────────────────────────────────────────────
       # All artifacts (binaries, Docker, Helm) are published — undraft unless user requested draft
@@ -249,7 +249,7 @@ jobs:
 
           **Assets:**
           - Docker: \`ghcr.io/${{ github.repository }}:${TAG}\`
-          - Helm: \`oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${TAG#v}\`
+          - Helm: \`oci://ghcr.io/${{ github.repository_owner }}/charts/kube-binpacking-exporter:${TAG#v}\`
           - [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${TAG})"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

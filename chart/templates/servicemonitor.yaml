@@ -2,16 +2,16 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "binpacking-exporter.fullname" . }}
+  name: {{ include "kube-binpacking-exporter.fullname" . }}
   labels:
-    {{- include "binpacking-exporter.labels" . | nindent 4 }}
+    {{- include "kube-binpacking-exporter.labels" . | nindent 4 }}
     {{- with .Values.serviceMonitor.additionalLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   selector:
     matchLabels:
-      {{- include "binpacking-exporter.selectorLabels" . | nindent 6 }}
+      {{- include "kube-binpacking-exporter.selectorLabels" . | nindent 6 }}
   endpoints:
     - port: metrics
       path: {{ .Values.metricsPath }}
