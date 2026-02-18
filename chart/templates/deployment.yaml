@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "binpacking-exporter.fullname" . }}
+  name: {{ include "kube-binpacking-exporter.fullname" . }}
   labels:
-    {{- include "binpacking-exporter.labels" . | nindent 4 }}
+    {{- include "kube-binpacking-exporter.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "binpacking-exporter.selectorLabels" . | nindent 6 }}
+      {{- include "kube-binpacking-exporter.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -16,7 +16,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "binpacking-exporter.selectorLabels" . | nindent 8 }}
+        {{- include "kube-binpacking-exporter.selectorLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -25,7 +25,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "binpacking-exporter.serviceAccountName" . }}
+      serviceAccountName: {{ include "kube-binpacking-exporter.serviceAccountName" . }}
       {{- with .Values.priorityClassName }}
       priorityClassName: {{ . | quote }}
       {{- end }}
@@ -48,7 +48,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 65532
-          {{- if include "binpacking-exporter.leaderElectionEnabled" . }}
+          {{- if include "kube-binpacking-exporter.leaderElectionEnabled" . }}
           env:
             - name: POD_NAME
               valueFrom:
@@ -73,7 +73,7 @@ spec:
             {{- if .Values.disableNodeMetrics }}
             - --disable-node-metrics
             {{- end }}
-            {{- if include "binpacking-exporter.leaderElectionEnabled" . }}
+            {{- if include "kube-binpacking-exporter.leaderElectionEnabled" . }}
             - --leader-election
             - --leader-election-id=$(POD_NAME)
             - --leader-election-namespace=$(POD_NAMESPACE)
@@ -128,7 +128,7 @@ spec:
           {{- else }}
           labelSelector:
             matchLabels:
-              {{- include "binpacking-exporter.selectorLabels" $ | nindent 14 }}
+              {{- include "kube-binpacking-exporter.selectorLabels" $ | nindent 14 }}
           {{- end }}
           {{- if .matchLabelKeys }}
           matchLabelKeys:

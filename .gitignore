@@ -1,5 +1,5 @@
 # Binaries
-kube-cluster-binpacking-exporter
+kube-binpacking-exporter
 *.exe
 *.dll
 *.so

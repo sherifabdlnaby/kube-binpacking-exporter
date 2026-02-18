@@ -1,4 +1,4 @@
-# Kube Cluster Binpacking Exporter Helm Chart
+# Kube Binpacking Exporter Helm Chart
 
 Prometheus exporter for Kubernetes cluster binpacking efficiency metrics. Tracks resource allocation (CPU, memory, or any custom resource) by comparing pod requests against node allocatable capacity.
 
@@ -16,7 +16,7 @@ Prometheus exporter for Kubernetes cluster binpacking efficiency metrics. Tracks
 ```bash
 # Install from OCI registry
 helm install binpacking-exporter \
-  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter
+  oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter
 
 # Install from local chart
 helm install binpacking-exporter ./chart
@@ -33,15 +33,15 @@ helm install binpacking-exporter ./chart
 
 ```bash
 helm install binpacking-exporter \
-  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+  oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter \
   --version 0.0.0
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter.git
-cd kube-cluster-binpacking-exporter
+git clone https://github.com/sherifabdlnaby/kube-binpacking-exporter.git
+cd kube-binpacking-exporter
 helm install binpacking-exporter ./chart
 ```
 
@@ -70,7 +70,7 @@ helm uninstall binpacking-exporter
 | disableNodeMetrics | bool | `false` | Disable per-node metrics to reduce cardinality. Recommended for clusters with >100 nodes |
 | fullnameOverride | string | `""` | Override the full release name |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. Valid values: `Always`, `IfNotPresent`, `Never` |
-| image.repository | string | `"ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter"` | Container image repository |
+| image.repository | string | `"ghcr.io/sherifabdlnaby/kube-binpacking-exporter"` | Container image repository |
 | image.tag | string | `""` | Image tag. Defaults to the chart's `appVersion` when empty |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries |
 | labelGroups | list | `[]` | Node label keys to group metrics by. Enables per-zone, per-instance-type metrics. Example: `["topology.kubernetes.io/zone"]` |
@@ -184,7 +184,7 @@ The Datadog Agent auto-discovers the endpoint at runtime using the `%%host%%` te
 
 ```yaml
 podAnnotations:
-  ad.datadoghq.com/kube-cluster-binpacking-exporter.checks: |
+  ad.datadoghq.com/kube-binpacking-exporter.checks: |
     {
       "openmetrics": {
         "instances": [
@@ -302,7 +302,7 @@ binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone"}
 
 1. Check RBAC permissions:
 ```bash
-kubectl logs -l app.kubernetes.io/name=kube-cluster-binpacking-exporter
+kubectl logs -l app.kubernetes.io/name=kube-binpacking-exporter
 ```
 
 2. Verify service account has cluster-reader permissions:
@@ -314,7 +314,7 @@ kubectl describe clusterrole binpacking-exporter
 
 1. Check readiness:
 ```bash
-kubectl get pods -l app.kubernetes.io/name=kube-cluster-binpacking-exporter
+kubectl get pods -l app.kubernetes.io/name=kube-binpacking-exporter
 ```
 
 2. Check `/readyz` endpoint:
@@ -347,7 +347,7 @@ MIT - See [LICENSE](../LICENSE) for details.
 
 ## Links
 
-- **GitHub**: https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter
-- **Issues**: https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/issues
-- **Docker Images**: https://ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter
-- **Helm Charts**: https://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter
+- **GitHub**: https://github.com/sherifabdlnaby/kube-binpacking-exporter
+- **Issues**: https://github.com/sherifabdlnaby/kube-binpacking-exporter/issues
+- **Docker Images**: https://ghcr.io/sherifabdlnaby/kube-binpacking-exporter
+- **Helm Charts**: https://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter

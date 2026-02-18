@@ -1,10 +1,10 @@
-{{- if include "binpacking-exporter.leaderElectionEnabled" . }}
+{{- if include "kube-binpacking-exporter.leaderElectionEnabled" . }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "binpacking-exporter.fullname" . }}-leader-election
+  name: {{ include "kube-binpacking-exporter.fullname" . }}-leader-election
   labels:
-    {{- include "binpacking-exporter.labels" . | nindent 4 }}
+    {{- include "kube-binpacking-exporter.labels" . | nindent 4 }}
 rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]

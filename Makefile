@@ -50,8 +50,8 @@ go: build vet test lint
 	@echo "✓ All Go checks passed!"
 
 build:
-	@echo "Building kube-cluster-binpacking-exporter $(VERSION)..."
-	go build -ldflags "$(LDFLAGS)" -o kube-cluster-binpacking-exporter .
+	@echo "Building kube-binpacking-exporter $(VERSION)..."
+	go build -ldflags "$(LDFLAGS)" -o kube-binpacking-exporter .
 
 vet:
 	@echo "Running go vet..."
@@ -135,5 +135,5 @@ helm-docs-check:
 # ── Clean ──────────────────────────────────────────────────────────────────
 clean:
 	@echo "Cleaning up..."
-	rm -f kube-cluster-binpacking-exporter
+	rm -f kube-binpacking-exporter
 	rm -f coverage.out coverage.html

@@ -1,16 +1,16 @@
-{{- if include "binpacking-exporter.leaderElectionEnabled" . }}
+{{- if include "kube-binpacking-exporter.leaderElectionEnabled" . }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "binpacking-exporter.fullname" . }}-leader-election
+  name: {{ include "kube-binpacking-exporter.fullname" . }}-leader-election
   labels:
-    {{- include "binpacking-exporter.labels" . | nindent 4 }}
+    {{- include "kube-binpacking-exporter.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "binpacking-exporter.fullname" . }}-leader-election
+  name: {{ include "kube-binpacking-exporter.fullname" . }}-leader-election
 subjects:
   - kind: ServiceAccount
-    name: {{ include "binpacking-exporter.serviceAccountName" . }}
+    name: {{ include "kube-binpacking-exporter.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

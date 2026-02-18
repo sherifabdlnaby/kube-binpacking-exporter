@@ -59,7 +59,7 @@ All metrics computed at scrape time from informer cache:
 
 ```bash
 # Build
-go build -o kube-cluster-binpacking-exporter .
+go build -o kube-binpacking-exporter .
 
 # Verify
 go vet ./...
@@ -114,7 +114,7 @@ See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, help
 
 ### Naming
 - **Flags**: Use `--kebab-case` (Go `flag` package standard)
-- **Helm templates**: Use `binpacking-exporter.*` helper prefix for consistency
+- **Helm templates**: Use `kube-binpacking-exporter.*` helper prefix for consistency
 - **Metrics**: All prefixed with `binpacking_` for namespacing
 - **Port**: 9101 (avoids collision with node-exporter on 9100, Prometheus on 9090)
 
@@ -169,11 +169,11 @@ No controller-runtime, no operator SDK — just the essentials.
 **Flow**: PR + label → merge → auto-tag → release (Docker + Helm + binaries + changelog)
 
 **Artifacts**:
-- **Docker**: `ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:v1.2.3` (linux/amd64, linux/arm64)
-- **Helm**: `oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter:1.2.3`
+- **Docker**: `ghcr.io/sherifabdlnaby/kube-binpacking-exporter:v1.2.3` (linux/amd64, linux/arm64)
+- **Helm**: `oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter:1.2.3`
 - **Binaries**: Linux/macOS/Windows (multiple architectures)
 
-**Install**: `helm install binpacking-exporter oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter`
+**Install**: `helm install binpacking-exporter oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter`
 
 **Manual** (if needed): `git tag v1.0.0 && git push origin v1.0.0`
 
