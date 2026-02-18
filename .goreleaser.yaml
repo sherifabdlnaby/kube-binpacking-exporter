@@ -18,7 +18,7 @@ builds:
     binary: kube-cluster-binpacking-exporter
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -34,24 +34,28 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 
-# ── Docker images (one per arch) ───────────────────────────────────────
-# GoReleaser builds each arch separately, then docker_manifests joins them.
+# ── Docker (multi-arch via buildx) ─────────────────────────────────────
+# dockers_v2 builds per-arch images and creates multi-arch manifests in one block.
 # Uses the existing multi-stage Dockerfile (builds from source inside Docker).
-dockers:
-  - image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
-    use: buildx
-    dockerfile: Dockerfile
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--build-arg=VERSION={{ .Version }}"
-      - "--build-arg=COMMIT={{ .FullCommit }}"
-      - "--build-arg=DATE={{ .Date }}"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.source={{ .GitURL }}"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+dockers_v2:
+  - images:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter"
+    tags:
+      - "{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    build_args:
+      VERSION: "{{ .Version }}"
+      COMMIT: "{{ .FullCommit }}"
+      DATE: "{{ .Date }}"
+    labels:
+      "org.opencontainers.image.title": "{{ .ProjectName }}"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
+      "org.opencontainers.image.created": "{{ .Date }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
     extra_files:
       - go.mod
       - go.sum
@@ -60,51 +64,12 @@ dockers:
       - collector.go
       - kubernetes.go
       - leaderelection.go
-    goos: linux
-    goarch: amd64
-
-  - image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
-    use: buildx
-    dockerfile: Dockerfile
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--build-arg=VERSION={{ .Version }}"
-      - "--build-arg=COMMIT={{ .FullCommit }}"
-      - "--build-arg=DATE={{ .Date }}"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.source={{ .GitURL }}"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-    extra_files:
-      - go.mod
-      - go.sum
-      - Makefile
-      - main.go
-      - collector.go
-      - kubernetes.go
-      - leaderelection.go
-    goos: linux
-    goarch: arm64
-
-# ── Multi-arch manifests ───────────────────────────────────────────────
-# Creates the tags consumers actually pull (version + major.minor)
-docker_manifests:
-  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Major }}.{{ .Minor }}"
-    image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
 
 # ── Cosign signing ─────────────────────────────────────────────────────
-# Keyless signing via GitHub OIDC — signs Docker manifests and binary checksums
+# Keyless signing via GitHub OIDC — signs Docker images and binary checksums
 docker_signs:
   - cmd: cosign
-    artifacts: manifests
+    artifacts: all
     args: ["sign", "--yes", "${artifact}"]
 
 signs:

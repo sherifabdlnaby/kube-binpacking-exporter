@@ -170,10 +170,14 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # ── Install Cosign (GoReleaser calls it for signing) ─────────
+      # ── Install Cosign + Syft (GoReleaser calls them for signing + SBOM) ──
       - name: Install Cosign
         if: steps.version.outputs.new_tag != ''
         uses: sigstore/cosign-installer@v3
+
+      - name: Install Syft
+        if: steps.version.outputs.new_tag != ''
+        uses: anchore/sbom-action/download-syft@v0
 
       # ── GoReleaser (binaries + Docker + signing + SBOM) ──────────
       # Creates a draft release with all artifacts — published after Helm succeeds
