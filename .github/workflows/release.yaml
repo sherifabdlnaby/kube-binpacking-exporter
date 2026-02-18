@@ -220,7 +220,7 @@ jobs:
         if: steps.version.outputs.new_tag != ''
         run: |
           CHART_VERSION="${{ steps.version.outputs.version }}"
-          helm package chart/ --version "${CHART_VERSION}" --app-version "${CHART_VERSION}"
+          helm package chart/ --version "${CHART_VERSION}" --app-version "${{ steps.version.outputs.new_tag }}"
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
           helm push "kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
           echo "Published oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
@@ -237,14 +237,15 @@ jobs:
       - name: Comment on PR
         if: github.event_name == 'push' && steps.pr.outputs.number != '' && steps.version.outputs.new_tag != ''
         run: |
-          gh pr comment ${{ steps.pr.outputs.number }} --body "**Release ${{ steps.version.outputs.new_tag }}** published!
+          TAG="${{ steps.version.outputs.new_tag }}"
+          gh pr comment ${{ steps.pr.outputs.number }} --body "**Release ${TAG}** published!
 
           **Bump type:** \`${{ steps.version.outputs.bump }}\`
           **Previous version:** ${{ steps.version.outputs.previous_tag }}
 
           **Assets:**
-          - Docker: \`ghcr.io/${{ github.repository }}:${{ steps.version.outputs.new_tag }}\`
-          - Helm: \`oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION#v}\`
-          - [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.new_tag }})"
+          - Docker: \`ghcr.io/${{ github.repository }}:${TAG}\`
+          - Helm: \`oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${TAG#v}\`
+          - [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${TAG})"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
