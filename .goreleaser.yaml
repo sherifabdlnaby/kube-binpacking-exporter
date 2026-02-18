@@ -35,10 +35,12 @@ checksum:
   name_template: 'checksums.txt'
 
 # ── Docker (multi-arch via buildx) ─────────────────────────────────────
-# dockers_v2 builds per-arch images and creates multi-arch manifests in one block.
-# Uses the existing multi-stage Dockerfile (builds from source inside Docker).
+# Uses GoReleaser's pre-built binaries — no QEMU compilation needed for ARM.
+# Dockerfile.release just COPYs the binary into distroless.
+# The original Dockerfile (multi-stage, builds from source) is kept for local use.
 dockers_v2:
-  - images:
+  - dockerfile: Dockerfile.release
+    images:
       - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter"
     tags:
       - "{{ .Version }}"
@@ -46,24 +48,14 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
-    build_args:
-      VERSION: "{{ .Version }}"
-      COMMIT: "{{ .FullCommit }}"
-      DATE: "{{ .Date }}"
     labels:
       "org.opencontainers.image.title": "{{ .ProjectName }}"
+      "org.opencontainers.image.description": "Prometheus exporter for Kubernetes cluster binpacking efficiency"
       "org.opencontainers.image.version": "{{ .Version }}"
       "org.opencontainers.image.source": "{{ .GitURL }}"
+      "org.opencontainers.image.licenses": "MIT"
       "org.opencontainers.image.created": "{{ .Date }}"
       "org.opencontainers.image.revision": "{{ .FullCommit }}"
-    extra_files:
-      - go.mod
-      - go.sum
-      - Makefile
-      - main.go
-      - collector.go
-      - kubernetes.go
-      - leaderelection.go
 
 # ── Cosign signing ─────────────────────────────────────────────────────
 # Keyless signing via GitHub OIDC — signs Docker images and binary checksums

@@ -27,6 +27,10 @@ RUN CGO_ENABLED=0 make build \
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
+LABEL org.opencontainers.image.source="https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter"
+LABEL org.opencontainers.image.description="Prometheus exporter for Kubernetes cluster binpacking efficiency"
+LABEL org.opencontainers.image.licenses="MIT"
+
 COPY --from=builder /binpacking-exporter /binpacking-exporter
 
 ENTRYPOINT ["/binpacking-exporter"]
