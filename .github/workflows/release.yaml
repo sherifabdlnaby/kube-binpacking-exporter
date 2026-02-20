@@ -229,6 +229,11 @@ jobs:
           helm push "kube-binpacking-exporter-${CHART_VERSION}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
           echo "Published oci://ghcr.io/${{ github.repository_owner }}/charts/kube-binpacking-exporter:${CHART_VERSION}"
 
+      - name: Sign Helm chart with Cosign
+        if: steps.version.outputs.new_tag != ''
+        run: |
+          cosign sign --yes ghcr.io/${{ github.repository_owner }}/charts/kube-binpacking-exporter:${{ steps.version.outputs.version }}
+
       # ── Publish release ──────────────────────────────────────────────
       # All artifacts (binaries, Docker, Helm) are published — undraft unless user requested draft
       - name: Publish GitHub Release
