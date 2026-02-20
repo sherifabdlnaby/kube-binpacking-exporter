@@ -51,10 +51,12 @@ dockers_v2:
       - linux/arm64
     annotations:
       "org.opencontainers.image.title": "{{ .ProjectName }}"
-      "org.opencontainers.image.description": "Prometheus exporter for Kubernetes binpacking efficiency"
+      "org.opencontainers.image.description": "Exporter for pre-computed Kubernetes Binpacking Effecieny Metrics"
+      "org.opencontainers.image.created": "{{ .Date }}"
+      "io.artifacthub.package.readme-url": "https://raw.githubusercontent.com/sherifabdlnaby/kube-binpacking-exporter/main/README.md"
     labels:
       "org.opencontainers.image.title": "{{ .ProjectName }}"
-      "org.opencontainers.image.description": "Prometheus exporter for Kubernetes binpacking efficiency"
+      "org.opencontainers.image.description": "Exporter for pre-computed Kubernetes Binpacking Effecieny Metrics"
       "org.opencontainers.image.version": "{{ .Version }}"
       "org.opencontainers.image.source": "{{ .GitURL }}"
       "org.opencontainers.image.licenses": "MIT"
