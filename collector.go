@@ -64,6 +64,36 @@ var (
 		"Number of nodes in this label group",
 		[]string{"label_group", "label_group_value"}, nil,
 	)
+	nodeDaemonsetOverhead = prometheus.NewDesc(
+		"kube_binpacking_node_daemonset_overhead",
+		"Total resource requested by DaemonSet pods on this node",
+		[]string{"node", "resource"}, nil,
+	)
+	nodeDaemonsetOverheadRatio = prometheus.NewDesc(
+		"kube_binpacking_node_daemonset_overhead_ratio",
+		"Ratio of DaemonSet overhead to allocatable (0.0-1.0+)",
+		[]string{"node", "resource"}, nil,
+	)
+	clusterDaemonsetOverhead = prometheus.NewDesc(
+		"kube_binpacking_cluster_daemonset_overhead",
+		"Cluster-wide total resource requested by DaemonSet pods",
+		[]string{"resource"}, nil,
+	)
+	clusterDaemonsetOverheadRatio = prometheus.NewDesc(
+		"kube_binpacking_cluster_daemonset_overhead_ratio",
+		"Cluster-wide DaemonSet overhead ratio",
+		[]string{"resource"}, nil,
+	)
+	groupDaemonsetOverhead = prometheus.NewDesc(
+		"kube_binpacking_group_daemonset_overhead",
+		"Total resource requested by DaemonSet pods on nodes in this label group",
+		[]string{"label_group", "label_group_value", "resource"}, nil,
+	)
+	groupDaemonsetOverheadRatio = prometheus.NewDesc(
+		"kube_binpacking_group_daemonset_overhead_ratio",
+		"Ratio of DaemonSet overhead to allocatable for nodes in this label group (0.0-1.0+)",
+		[]string{"label_group", "label_group_value", "resource"}, nil,
+	)
 	clusterNodeCount = prometheus.NewDesc(
 		"kube_binpacking_cluster_node_count",
 		"Total number of nodes in the cluster",
@@ -137,6 +167,18 @@ func calculatePodRequest(pod *corev1.Pod, resource corev1.ResourceName) (float64
 	return regularSum, details
 }
 
+// isDaemonSetPod returns true if the pod is owned by a DaemonSet.
+// DaemonSet pods have a direct OwnerReference with Kind "DaemonSet"
+// (unlike Deployments which go through ReplicaSet).
+func isDaemonSetPod(pod *corev1.Pod) bool {
+	for _, ref := range pod.OwnerReferences {
+		if ref.Kind == "DaemonSet" {
+			return true
+		}
+	}
+	return false
+}
+
 type podRequestDetails struct {
 	regularSum         float64
 	initMax            float64
@@ -174,15 +216,21 @@ func (c *BinpackingCollector) Describe(ch chan<- *prometheus.Desc) {
 		ch <- nodeAllocated
 		ch <- nodeAllocatable
 		ch <- nodeUtilization
+		ch <- nodeDaemonsetOverhead
+		ch <- nodeDaemonsetOverheadRatio
 	}
 	ch <- clusterAllocated
 	ch <- clusterAllocatable
 	ch <- clusterUtilization
+	ch <- clusterDaemonsetOverhead
+	ch <- clusterDaemonsetOverheadRatio
 	ch <- clusterNodeCount
 	if len(c.labelGroups) > 0 {
 		ch <- groupAllocated
 		ch <- groupAllocatable
 		ch <- groupUtilization
+		ch <- groupDaemonsetOverhead
+		ch <- groupDaemonsetOverheadRatio
 		ch <- groupNodeCount
 	}
 	ch <- cacheAge
@@ -245,6 +293,7 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 	// Track cluster-wide totals per resource.
 	clusterAllocatedTotals := make(map[corev1.ResourceName]float64)
 	clusterAllocatableTotals := make(map[corev1.ResourceName]float64)
+	clusterDaemonsetTotals := make(map[corev1.ResourceName]float64)
 
 	for _, node := range nodes {
 		nodePods := podsByNode[node.Name]
@@ -259,9 +308,14 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 			// 1. Sum of all regular container requests
 			// 2. Max init container request (they run sequentially)
 			var allocated float64
+			var daemonsetOverhead float64
 			for _, pod := range nodePods {
 				podRequest, details := calculatePodRequest(pod, res)
 				allocated += podRequest
+
+				if isDaemonSetPod(pod) {
+					daemonsetOverhead += podRequest
+				}
 
 				if c.logger.Enabled(context.TODO(), slog.LevelDebug) && podRequest > 0 {
 					if details.usedInit {
@@ -289,10 +343,14 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 				allocatable = qty.AsApproximateFloat64()
 			}
 
-			// Compute ratio.
+			// Compute ratios.
 			var ratio float64
 			if allocatable > 0 {
 				ratio = allocated / allocatable
+			}
+			var dsRatio float64
+			if allocatable > 0 {
+				dsRatio = daemonsetOverhead / allocatable
 			}
 
 			// Emit per-node metrics if enabled
@@ -302,15 +360,19 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 					"resource", resStr,
 					"allocated", allocated,
 					"allocatable", allocatable,
-					"utilization", ratio)
+					"utilization", ratio,
+					"daemonset_overhead", daemonsetOverhead)
 
 				ch <- prometheus.MustNewConstMetric(nodeAllocated, prometheus.GaugeValue, allocated, node.Name, resStr)
 				ch <- prometheus.MustNewConstMetric(nodeAllocatable, prometheus.GaugeValue, allocatable, node.Name, resStr)
 				ch <- prometheus.MustNewConstMetric(nodeUtilization, prometheus.GaugeValue, ratio, node.Name, resStr)
+				ch <- prometheus.MustNewConstMetric(nodeDaemonsetOverhead, prometheus.GaugeValue, daemonsetOverhead, node.Name, resStr)
+				ch <- prometheus.MustNewConstMetric(nodeDaemonsetOverheadRatio, prometheus.GaugeValue, dsRatio, node.Name, resStr)
 			}
 
 			clusterAllocatedTotals[res] += allocated
 			clusterAllocatableTotals[res] += allocatable
+			clusterDaemonsetTotals[res] += daemonsetOverhead
 		}
 	}
 
@@ -319,21 +381,29 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 		resStr := string(res)
 		allocated := clusterAllocatedTotals[res]
 		allocatable := clusterAllocatableTotals[res]
+		dsOverhead := clusterDaemonsetTotals[res]
 
 		var ratio float64
 		if allocatable > 0 {
 			ratio = allocated / allocatable
+		}
+		var dsRatio float64
+		if allocatable > 0 {
+			dsRatio = dsOverhead / allocatable
 		}
 
 		c.logger.Debug("cluster metrics",
 			"resource", resStr,
 			"allocated", allocated,
 			"allocatable", allocatable,
-			"utilization", ratio)
+			"utilization", ratio,
+			"daemonset_overhead", dsOverhead)
 
 		ch <- prometheus.MustNewConstMetric(clusterAllocated, prometheus.GaugeValue, allocated, resStr)
 		ch <- prometheus.MustNewConstMetric(clusterAllocatable, prometheus.GaugeValue, allocatable, resStr)
 		ch <- prometheus.MustNewConstMetric(clusterUtilization, prometheus.GaugeValue, ratio, resStr)
+		ch <- prometheus.MustNewConstMetric(clusterDaemonsetOverhead, prometheus.GaugeValue, dsOverhead, resStr)
+		ch <- prometheus.MustNewConstMetric(clusterDaemonsetOverheadRatio, prometheus.GaugeValue, dsRatio, resStr)
 	}
 
 	// Emit cluster node count
@@ -374,15 +444,20 @@ func (c *BinpackingCollector) collectLabelGroupMetrics(ch chan<- prometheus.Metr
 		for compositeValue, groupNodes := range nodesByCompositeValue {
 			allocatedTotals := make(map[corev1.ResourceName]float64)
 			allocatableTotals := make(map[corev1.ResourceName]float64)
+			daemonsetTotals := make(map[corev1.ResourceName]float64)
 
 			for _, node := range groupNodes {
 				nodePods := podsByNode[node.Name]
 
 				for _, res := range c.resources {
 					var allocated float64
+					var dsOverhead float64
 					for _, pod := range nodePods {
 						podRequest, _ := calculatePodRequest(pod, res)
 						allocated += podRequest
+						if isDaemonSetPod(pod) {
+							dsOverhead += podRequest
+						}
 					}
 
 					var allocatable float64
@@ -392,6 +467,7 @@ func (c *BinpackingCollector) collectLabelGroupMetrics(ch chan<- prometheus.Metr
 
 					allocatedTotals[res] += allocated
 					allocatableTotals[res] += allocatable
+					daemonsetTotals[res] += dsOverhead
 				}
 			}
 
@@ -400,10 +476,15 @@ func (c *BinpackingCollector) collectLabelGroupMetrics(ch chan<- prometheus.Metr
 				resStr := string(res)
 				allocated := allocatedTotals[res]
 				allocatable := allocatableTotals[res]
+				dsOverhead := daemonsetTotals[res]
 
 				var ratio float64
 				if allocatable > 0 {
 					ratio = allocated / allocatable
+				}
+				var dsRatio float64
+				if allocatable > 0 {
+					dsRatio = dsOverhead / allocatable
 				}
 
 				c.logger.Debug("group metrics",
@@ -413,11 +494,14 @@ func (c *BinpackingCollector) collectLabelGroupMetrics(ch chan<- prometheus.Metr
 					"allocated", allocated,
 					"allocatable", allocatable,
 					"utilization", ratio,
+					"daemonset_overhead", dsOverhead,
 					"node_count", len(groupNodes))
 
 				ch <- prometheus.MustNewConstMetric(groupAllocated, prometheus.GaugeValue, allocated, labelGroupKey, compositeValue, resStr)
 				ch <- prometheus.MustNewConstMetric(groupAllocatable, prometheus.GaugeValue, allocatable, labelGroupKey, compositeValue, resStr)
 				ch <- prometheus.MustNewConstMetric(groupUtilization, prometheus.GaugeValue, ratio, labelGroupKey, compositeValue, resStr)
+				ch <- prometheus.MustNewConstMetric(groupDaemonsetOverhead, prometheus.GaugeValue, dsOverhead, labelGroupKey, compositeValue, resStr)
+				ch <- prometheus.MustNewConstMetric(groupDaemonsetOverheadRatio, prometheus.GaugeValue, dsRatio, labelGroupKey, compositeValue, resStr)
 			}
 
 			ch <- prometheus.MustNewConstMetric(groupNodeCount, prometheus.GaugeValue, float64(len(groupNodes)), labelGroupKey, compositeValue)

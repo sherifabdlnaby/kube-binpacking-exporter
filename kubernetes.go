@@ -227,8 +227,9 @@ func stripUnusedFields(obj interface{}) (interface{}, error) {
 		}
 		v.Status = corev1.PodStatus{Phase: v.Status.Phase}
 		v.ObjectMeta = metav1.ObjectMeta{
-			Name:      v.Name,
-			Namespace: v.Namespace,
+			Name:            v.Name,
+			Namespace:       v.Namespace,
+			OwnerReferences: v.OwnerReferences,
 		}
 		return v, nil
 

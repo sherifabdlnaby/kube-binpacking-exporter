@@ -377,12 +377,20 @@ func TestBinpackingCollector_Collect(t *testing.T) {
 	for _, m := range metrics {
 		desc := m.Desc().String()
 		switch {
+		case contains(desc, "kube_binpacking_node_daemonset_overhead_ratio"):
+			metricCounts["node_daemonset_overhead_ratio"]++
+		case contains(desc, "kube_binpacking_node_daemonset_overhead"):
+			metricCounts["node_daemonset_overhead"]++
 		case contains(desc, "kube_binpacking_node_allocated"):
 			metricCounts["node_allocated"]++
 		case contains(desc, "kube_binpacking_node_allocatable"):
 			metricCounts["node_allocatable"]++
 		case contains(desc, "kube_binpacking_node_utilization_ratio"):
 			metricCounts["node_utilization"]++
+		case contains(desc, "kube_binpacking_cluster_daemonset_overhead_ratio"):
+			metricCounts["cluster_daemonset_overhead_ratio"]++
+		case contains(desc, "kube_binpacking_cluster_daemonset_overhead"):
+			metricCounts["cluster_daemonset_overhead"]++
 		case contains(desc, "kube_binpacking_cluster_allocated"):
 			metricCounts["cluster_allocated"]++
 		case contains(desc, "kube_binpacking_cluster_allocatable"):
@@ -395,17 +403,21 @@ func TestBinpackingCollector_Collect(t *testing.T) {
 	}
 
 	// Verify metric counts
-	// 2 nodes × 2 resources = 4 metrics per type (node_allocated, node_allocatable, node_utilization)
-	// 2 resources = 2 metrics per type (cluster_allocated, cluster_allocatable, cluster_utilization)
+	// 2 nodes × 2 resources = 4 metrics per type (node_allocated, node_allocatable, node_utilization, node_daemonset_overhead, node_daemonset_overhead_ratio)
+	// 2 resources = 2 metrics per type (cluster_allocated, cluster_allocatable, cluster_utilization, cluster_daemonset_overhead, cluster_daemonset_overhead_ratio)
 	// 1 cache_age metric
 	expectedCounts := map[string]int{
-		"node_allocated":      4, // 2 nodes × 2 resources
-		"node_allocatable":    4,
-		"node_utilization":    4,
-		"cluster_allocated":   2, // 2 resources
-		"cluster_allocatable": 2,
-		"cluster_utilization": 2,
-		"cache_age":           1,
+		"node_allocated":                   4, // 2 nodes × 2 resources
+		"node_allocatable":                 4,
+		"node_utilization":                 4,
+		"node_daemonset_overhead":          4,
+		"node_daemonset_overhead_ratio":    4,
+		"cluster_allocated":                2, // 2 resources
+		"cluster_allocatable":              2,
+		"cluster_utilization":              2,
+		"cluster_daemonset_overhead":       2,
+		"cluster_daemonset_overhead_ratio": 2,
+		"cache_age":                        1,
 	}
 
 	for metricType, expected := range expectedCounts {
@@ -501,7 +513,7 @@ func TestBinpackingCollector_Describe(t *testing.T) {
 
 	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
-	ch := make(chan *prometheus.Desc, 10)
+	ch := make(chan *prometheus.Desc, 20)
 	collector.Describe(ch)
 	close(ch)
 
@@ -511,8 +523,10 @@ func TestBinpackingCollector_Describe(t *testing.T) {
 		descs = append(descs, d)
 	}
 
-	// Should have 8 metric descriptors (3 node + 3 cluster + 1 cluster_node_count + 1 cache_age)
-	expectedDescCount := 8
+	// Should have 10 metric descriptors (5 node + 5 cluster + 1 cluster_node_count + 1 cache_age)
+	// Node: allocated, allocatable, utilization, daemonset_overhead, daemonset_overhead_ratio
+	// Cluster: allocated, allocatable, utilization, daemonset_overhead, daemonset_overhead_ratio
+	expectedDescCount := 12
 	if len(descs) != expectedDescCount {
 		t.Errorf("expected %d descriptors, got %d", expectedDescCount, len(descs))
 	}
@@ -528,7 +542,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 		podLister := &fakePodLister{pods: []*corev1.Pod{}}
 		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
-		ch := make(chan prometheus.Metric, 10)
+		ch := make(chan prometheus.Metric, 50)
 		collector.Collect(ch)
 		close(ch)
 
@@ -550,7 +564,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 		podLister := &fakePodLister{err: someError("pod list failed")}
 		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
-		ch := make(chan prometheus.Metric, 10)
+		ch := make(chan prometheus.Metric, 50)
 		collector.Collect(ch)
 		close(ch)
 
@@ -577,7 +591,7 @@ func TestBinpackingCollector_ErrorHandling(t *testing.T) {
 		// Create collector with nil syncInfo
 		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, nil, true, nil, nil)
 
-		ch := make(chan prometheus.Metric, 10)
+		ch := make(chan prometheus.Metric, 50)
 		collector.Collect(ch)
 		close(ch)
 
@@ -954,8 +968,8 @@ func TestBinpackingCollector_DisableNodeMetrics(t *testing.T) {
 		t.Errorf("Expected 0 node metrics when disabled, got %d", nodeMetricCount)
 	}
 
-	// Should still have cluster metrics (3 metrics × 2 resources + 1 node_count = 7)
-	expectedClusterMetrics := 7
+	// Should still have cluster metrics (5 metrics × 2 resources + 1 node_count = 11)
+	expectedClusterMetrics := 11
 	if clusterMetricCount != expectedClusterMetrics {
 		t.Errorf("Expected %d cluster metrics, got %d", expectedClusterMetrics, clusterMetricCount)
 	}
@@ -1008,8 +1022,8 @@ func TestBinpackingCollector_EnableNodeMetrics(t *testing.T) {
 		}
 	}
 
-	// Should have node metrics (1 node × 3 metrics × 1 resource = 3)
-	expectedNodeMetrics := 3
+	// Should have node metrics (1 node × 5 metrics × 1 resource = 5)
+	expectedNodeMetrics := 5
 	if nodeMetricCount != expectedNodeMetrics {
 		t.Errorf("Expected %d node metrics when enabled, got %d", expectedNodeMetrics, nodeMetricCount)
 	}
@@ -1262,4 +1276,249 @@ func findSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// makeDaemonSetPod creates a pod owned by a DaemonSet with specified resources.
+func makeDaemonSetPod(namespace, name, nodeName string, cpu, memory string) *corev1.Pod {
+	pod := makePodWithResources(namespace, name, nodeName, corev1.PodRunning,
+		[]corev1.Container{makeContainer("ds-container", cpu, memory)}, nil)
+	pod.OwnerReferences = []metav1.OwnerReference{
+		{
+			APIVersion: "apps/v1",
+			Kind:       "DaemonSet",
+			Name:       name + "-ds",
+		},
+	}
+	return pod
+}
+
+// TestIsDaemonSetPod tests detection of DaemonSet-owned pods via OwnerReferences.
+func TestIsDaemonSetPod(t *testing.T) {
+	tests := []struct {
+		name            string
+		ownerReferences []metav1.OwnerReference
+		want            bool
+	}{
+		{
+			name: "DaemonSet pod",
+			ownerReferences: []metav1.OwnerReference{
+				{Kind: "DaemonSet", Name: "node-exporter"},
+			},
+			want: true,
+		},
+		{
+			name: "ReplicaSet pod",
+			ownerReferences: []metav1.OwnerReference{
+				{Kind: "ReplicaSet", Name: "my-deploy-abc123"},
+			},
+			want: false,
+		},
+		{
+			name:            "bare pod (no owner)",
+			ownerReferences: nil,
+			want:            false,
+		},
+		{
+			name: "StatefulSet pod",
+			ownerReferences: []metav1.OwnerReference{
+				{Kind: "StatefulSet", Name: "my-sts"},
+			},
+			want: false,
+		},
+		{
+			name: "multiple owners including DaemonSet",
+			ownerReferences: []metav1.OwnerReference{
+				{Kind: "Node", Name: "node-1"},
+				{Kind: "DaemonSet", Name: "fluentbit"},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-pod",
+					Namespace:       "default",
+					OwnerReferences: tt.ownerReferences,
+				},
+			}
+			if got := isDaemonSetPod(pod); got != tt.want {
+				t.Errorf("isDaemonSetPod() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestBinpackingCollector_DaemonSetOverhead tests that DaemonSet overhead metrics
+// are correctly computed for node-level and cluster-level aggregates.
+func TestBinpackingCollector_DaemonSetOverhead(t *testing.T) {
+	nodes := []*corev1.Node{
+		makeNode("node-1", "4", "8Gi"),
+		makeNode("node-2", "8", "16Gi"),
+	}
+
+	pods := []*corev1.Pod{
+		// Regular pod on node-1: 1 CPU
+		makePodWithResources("default", "regular-1", "node-1", corev1.PodRunning,
+			[]corev1.Container{makeContainer("app", "1", "2Gi")}, nil),
+		// DaemonSet pod on node-1: 250m CPU
+		makeDaemonSetPod("kube-system", "fluentbit-node1", "node-1", "250m", "512Mi"),
+		// DaemonSet pod on node-2: 250m CPU
+		makeDaemonSetPod("kube-system", "fluentbit-node2", "node-2", "250m", "512Mi"),
+		// Regular pod on node-2: 2 CPU
+		makePodWithResources("default", "regular-2", "node-2", corev1.PodRunning,
+			[]corev1.Container{makeContainer("app", "2", "4Gi")}, nil),
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	resources := []corev1.ResourceName{corev1.ResourceCPU}
+	collector := NewBinpackingCollector(
+		&fakeNodeLister{nodes: nodes}, &fakePodLister{pods: pods},
+		logger, resources, nil, true, nil, nil,
+	)
+
+	ch := make(chan prometheus.Metric, 100)
+	collector.Collect(ch)
+	close(ch)
+
+	metricCounts := make(map[string]int)
+	for m := range ch {
+		desc := m.Desc().String()
+		switch {
+		case contains(desc, "kube_binpacking_node_daemonset_overhead_ratio"):
+			metricCounts["node_ds_ratio"]++
+		case contains(desc, "kube_binpacking_node_daemonset_overhead"):
+			metricCounts["node_ds_overhead"]++
+		case contains(desc, "kube_binpacking_cluster_daemonset_overhead_ratio"):
+			metricCounts["cluster_ds_ratio"]++
+		case contains(desc, "kube_binpacking_cluster_daemonset_overhead"):
+			metricCounts["cluster_ds_overhead"]++
+		}
+	}
+
+	// 2 nodes × 1 resource = 2 node-level DS metrics each
+	if metricCounts["node_ds_overhead"] != 2 {
+		t.Errorf("node_daemonset_overhead: got %d, want 2", metricCounts["node_ds_overhead"])
+	}
+	if metricCounts["node_ds_ratio"] != 2 {
+		t.Errorf("node_daemonset_overhead_ratio: got %d, want 2", metricCounts["node_ds_ratio"])
+	}
+	// 1 resource = 1 cluster-level DS metric each
+	if metricCounts["cluster_ds_overhead"] != 1 {
+		t.Errorf("cluster_daemonset_overhead: got %d, want 1", metricCounts["cluster_ds_overhead"])
+	}
+	if metricCounts["cluster_ds_ratio"] != 1 {
+		t.Errorf("cluster_daemonset_overhead_ratio: got %d, want 1", metricCounts["cluster_ds_ratio"])
+	}
+}
+
+// TestBinpackingCollector_DaemonSetOverhead_LabelGroups tests that group-level
+// DaemonSet overhead metrics are emitted when label groups are configured.
+func TestBinpackingCollector_DaemonSetOverhead_LabelGroups(t *testing.T) {
+	nodes := []*corev1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "node-zone-a",
+				Labels: map[string]string{"topology.kubernetes.io/zone": "us-east-1a"},
+			},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("4"),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "node-zone-b",
+				Labels: map[string]string{"topology.kubernetes.io/zone": "us-east-1b"},
+			},
+			Status: corev1.NodeStatus{
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("8"),
+				},
+			},
+		},
+	}
+
+	pods := []*corev1.Pod{
+		makeDaemonSetPod("kube-system", "fluentbit-a", "node-zone-a", "250m", ""),
+		makeDaemonSetPod("kube-system", "fluentbit-b", "node-zone-b", "250m", ""),
+		makePodWithResources("default", "app-a", "node-zone-a", corev1.PodRunning,
+			[]corev1.Container{makeContainer("app", "1", "")}, nil),
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	labelGroups := [][]string{{"topology.kubernetes.io/zone"}}
+	resources := []corev1.ResourceName{corev1.ResourceCPU}
+	collector := NewBinpackingCollector(
+		&fakeNodeLister{nodes: nodes}, &fakePodLister{pods: pods},
+		logger, resources, labelGroups, true, nil, nil,
+	)
+
+	ch := make(chan prometheus.Metric, 200)
+	collector.Collect(ch)
+	close(ch)
+
+	var groupDSOverheadCount, groupDSRatioCount int
+	for m := range ch {
+		desc := m.Desc().String()
+		switch {
+		case contains(desc, "kube_binpacking_group_daemonset_overhead_ratio"):
+			groupDSRatioCount++
+		case contains(desc, "kube_binpacking_group_daemonset_overhead"):
+			groupDSOverheadCount++
+		}
+	}
+
+	// 2 zones × 1 resource = 2 group-level DS metrics each
+	if groupDSOverheadCount != 2 {
+		t.Errorf("group_daemonset_overhead: got %d, want 2", groupDSOverheadCount)
+	}
+	if groupDSRatioCount != 2 {
+		t.Errorf("group_daemonset_overhead_ratio: got %d, want 2", groupDSRatioCount)
+	}
+}
+
+// TestBinpackingCollector_DaemonSetOverhead_DisableNodeMetrics tests that
+// node-level DS metrics are suppressed when node metrics are disabled,
+// but cluster-level DS metrics are still emitted.
+func TestBinpackingCollector_DaemonSetOverhead_DisableNodeMetrics(t *testing.T) {
+	nodes := []*corev1.Node{makeNode("node-1", "4", "8Gi")}
+	pods := []*corev1.Pod{
+		makeDaemonSetPod("kube-system", "fluentbit", "node-1", "250m", "512Mi"),
+		makePodWithResources("default", "app", "node-1", corev1.PodRunning,
+			[]corev1.Container{makeContainer("app", "1", "2Gi")}, nil),
+	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	resources := []corev1.ResourceName{corev1.ResourceCPU}
+	collector := NewBinpackingCollector(
+		&fakeNodeLister{nodes: nodes}, &fakePodLister{pods: pods},
+		logger, resources, nil, false, nil, nil, // enableNodeMetrics = false
+	)
+
+	ch := make(chan prometheus.Metric, 100)
+	collector.Collect(ch)
+	close(ch)
+
+	var nodeDSCount, clusterDSCount int
+	for m := range ch {
+		desc := m.Desc().String()
+		switch {
+		case contains(desc, "kube_binpacking_node_daemonset"):
+			nodeDSCount++
+		case contains(desc, "kube_binpacking_cluster_daemonset"):
+			clusterDSCount++
+		}
+	}
+
+	if nodeDSCount > 0 {
+		t.Errorf("Expected 0 node DS metrics when disabled, got %d", nodeDSCount)
+	}
+	// 1 resource × 2 cluster DS metrics (overhead + ratio)
+	if clusterDSCount != 2 {
+		t.Errorf("Expected 2 cluster DS metrics, got %d", clusterDSCount)
+	}
 }

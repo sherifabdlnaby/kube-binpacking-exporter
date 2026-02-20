@@ -218,8 +218,11 @@ func TestStripUnusedFields_Pod(t *testing.T) {
 	if stripped.Annotations != nil {
 		t.Errorf("Annotations should be nil, got %v", stripped.Annotations)
 	}
-	if len(stripped.OwnerReferences) != 0 {
-		t.Errorf("OwnerReferences should be empty, got %v", stripped.OwnerReferences)
+	if len(stripped.OwnerReferences) != 1 {
+		t.Errorf("OwnerReferences count = %d, want 1", len(stripped.OwnerReferences))
+	}
+	if stripped.OwnerReferences[0].Kind != "ReplicaSet" {
+		t.Errorf("OwnerReferences[0].Kind = %q, want %q", stripped.OwnerReferences[0].Kind, "ReplicaSet")
 	}
 	if len(stripped.ManagedFields) != 0 {
 		t.Errorf("ManagedFields should be empty, got %v", stripped.ManagedFields)
