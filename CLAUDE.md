@@ -35,13 +35,19 @@ All metrics computed at scrape time from informer cache:
 | `kube_binpacking_node_allocated` | Gauge | `node`, `resource` | Total resource requests on node |
 | `kube_binpacking_node_allocatable` | Gauge | `node`, `resource` | Node capacity |
 | `kube_binpacking_node_utilization_ratio` | Gauge | `node`, `resource` | allocated / allocatable (0.0-1.0+) |
+| `kube_binpacking_node_daemonset_overhead` | Gauge | `node`, `resource` | DaemonSet resource requests on node |
+| `kube_binpacking_node_daemonset_overhead_ratio` | Gauge | `node`, `resource` | DaemonSet overhead / allocatable (0.0-1.0+) |
 | `kube_binpacking_cluster_allocated` | Gauge | `resource` | Cluster-wide total requests |
 | `kube_binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide capacity |
 | `kube_binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide ratio |
+| `kube_binpacking_cluster_daemonset_overhead` | Gauge | `resource` | Cluster-wide DaemonSet requests |
+| `kube_binpacking_cluster_daemonset_overhead_ratio` | Gauge | `resource` | Cluster-wide DaemonSet overhead ratio |
 | `kube_binpacking_cluster_node_count` | Gauge | - | Total number of nodes in cluster |
 | `kube_binpacking_group_allocated` | Gauge | `label_group`, `label_group_value`, `resource` | Total requests on nodes in this label group (only if `--label-group` set) |
 | `kube_binpacking_group_allocatable` | Gauge | `label_group`, `label_group_value`, `resource` | Total capacity on nodes in this label group (only if `--label-group` set) |
 | `kube_binpacking_group_utilization_ratio` | Gauge | `label_group`, `label_group_value`, `resource` | Ratio for nodes in this label group (only if `--label-group` set) |
+| `kube_binpacking_group_daemonset_overhead` | Gauge | `label_group`, `label_group_value`, `resource` | DaemonSet requests on nodes in this label group (only if `--label-group` set) |
+| `kube_binpacking_group_daemonset_overhead_ratio` | Gauge | `label_group`, `label_group_value`, `resource` | DaemonSet overhead ratio for this label group (only if `--label-group` set) |
 | `kube_binpacking_group_node_count` | Gauge | `label_group`, `label_group_value` | Node count for this label group (only if `--label-group` set) |
 | `kube_binpacking_cache_age_seconds` | Gauge | - | Time since last informer sync |
 
@@ -98,7 +104,7 @@ See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, help
 
 **Kubernetes**: Config resolution: flag → kubeconfig → in-cluster | Fail-fast `ServerVersion()` check | 2-min sync timeout with progress logging every 5s
 
-**Pod Accounting**: `max(sum_regular, max_init)` matches K8s scheduler | Terminated pods (`Succeeded|Failed`) excluded server-side via field selector on pod informer | Unscheduled pods (`NodeName=""`) filtered client-side in `Collect()`
+**Pod Accounting**: `max(sum_regular, max_init)` matches K8s scheduler | Terminated pods (`Succeeded|Failed`) excluded server-side via field selector on pod informer | Unscheduled pods (`NodeName=""`) filtered client-side in `Collect()` | DaemonSet pods identified via direct `OwnerReferences` (Kind=DaemonSet), no extra RBAC needed
 
 **Metrics**: Scrape-time `MustNewConstMetric` (auto-handles node churn) | Custom registry (no Go runtime metrics) | `resource` label for extensibility | Optional combination label grouping via repeatable `--label-group` flag | Cache age metric for stale alerts
 
