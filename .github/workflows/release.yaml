@@ -198,7 +198,7 @@ jobs:
         if: steps.version.outputs.new_tag != ''
         uses: aquasecurity/trivy-action@0.34.0
         with:
-          image-ref: "ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}"
+          image-ref: "ghcr.io/${{ github.repository }}:${{ steps.version.outputs.new_tag }}"
           format: sarif
           output: trivy-release.sarif
           severity: CRITICAL,HIGH
