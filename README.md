@@ -2,12 +2,10 @@
 
 [![CI](https://github.com/sherifabdlnaby/kube-binpacking-exporter/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/actions/workflows/ci.yaml)
 [![Release](https://github.com/sherifabdlnaby/kube-binpacking-exporter/actions/workflows/release.yaml/badge.svg)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/actions/workflows/release.yaml)
-[![Trivy](https://img.shields.io/badge/trivy-scanned-blue?logo=aquasecurity&logoColor=white)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/security/code-scanning?query=tool%3ATrivy)
 [![CodeQL](https://img.shields.io/badge/codeql-analyzed-blue?logo=github&logoColor=white)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/security/code-scanning?query=tool%3ACodeQL)
 [![GitHub Release](https://img.shields.io/github/v/release/sherifabdlnaby/kube-binpacking-exporter)](https://github.com/sherifabdlnaby/kube-binpacking-exporter/releases/latest)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/sherifabdlnaby/kube-binpacking-exporter)](go.mod)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/kube-binpacking-exporter-chart)](https://artifacthub.io/packages/search?repo=kube-binpacking-exporter-chart)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-%3E%3D%201.29-blue?logo=kubernetes&logoColor=white)](https://github.com/sherifabdlnaby/kube-binpacking-exporter)
-[![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](#development)
 [![License](https://img.shields.io/github/license/sherifabdlnaby/kube-binpacking-exporter)](LICENSE)
 
 Export straight-forward metrics to track Kubernetes cluster nodes binpacking efficiency, across individual nodes, by node groups (via Labels), or across the entire cluster, that are easier to aggregate over longer periods of time.

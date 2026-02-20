@@ -1,6 +1,6 @@
 apiVersion: v2
 name: kube-binpacking-exporter
-description: Prometheus exporter for Kubernetes binpacking efficiency
+description: Exporter for pre-computed Kubernetes Binpacking Effecieny Metrics
 type: application
 kubeVersion: ">= 1.29.0-0"
 # Version is set to 0.0.0 in the repository. The actual version is injected
@@ -10,10 +10,7 @@ appVersion: "0.0.0"
 icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.svg
 keywords:
   - kubernetes
-  - prometheus
-  - monitoring
   - binpacking
-  - metrics
 maintainers:
   - name: sherifabdlnaby
     url: https://github.com/sherifabdlnaby

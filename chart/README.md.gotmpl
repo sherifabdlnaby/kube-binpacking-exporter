@@ -1,6 +1,6 @@
 # Kube Binpacking Exporter Helm Chart
 
-Prometheus exporter for Kubernetes binpacking efficiency metrics. Tracks resource allocation (CPU, memory, or any custom resource) by comparing pod requests against node allocatable capacity.
+Exporter for pre-computed Kubernetes Binpacking Effecieny Metrics metrics. Tracks resource allocation (CPU, memory, or any custom resource) by comparing pod requests against node allocatable capacity.
 
 ## Features
 
