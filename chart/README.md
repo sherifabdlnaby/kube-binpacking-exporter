@@ -5,10 +5,10 @@ Prometheus exporter for Kubernetes binpacking efficiency metrics. Tracks resourc
 ## Features
 
 - **Resource-agnostic**: Track CPU, memory, GPU, or any custom resource
-- **Multi-dimensional metrics**: Per-node, cluster-wide, and label-based grouping
+- **Multi-dimensional metrics**: Per-node, cluster-wide, and combination label grouping
 - **Zero API overhead**: Informer-based caching with zero API calls per scrape
 - **Cardinality control**: Optional per-node metrics disable for large clusters
-- **Label grouping**: Per-zone, per-instance-type, or custom label groupings
+- **Combination label grouping**: Group by label combinations (e.g., zone+instance-type) via repeatable `--label-group` flag
 - **Init container aware**: Correctly accounts for init container resource requests
 
 ## TL;DR
@@ -73,7 +73,7 @@ helm uninstall kube-binpacking-exporter
 | image.repository | string | `"ghcr.io/sherifabdlnaby/kube-binpacking-exporter"` | Container image repository |
 | image.tag | string | `""` | Image tag. Defaults to the chart's `appVersion` when empty |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries |
-| labelGroups | list | `[]` | Label groups for combination grouping. Each entry is a comma-separated list of label keys defining one group. Example: `["topology.kubernetes.io/zone,node.kubernetes.io/instance-type", "topology.kubernetes.io/zone"]` |
+| labelGroups | list | `[]` | Label groups for combination grouping. Each entry is a comma-separated list of label keys defining one group. Nodes are grouped by the tuple of values for all keys in the group. Example: `["topology.kubernetes.io/zone,node.kubernetes.io/instance-type", "topology.kubernetes.io/zone"]` |
 | leaderElection.enabled | bool | `false` | Enable leader election for HA active-passive mode. Only the leader publishes binpacking metrics. Auto-enabled when `replicaCount > 1` |
 | leaderElection.leaseDuration | string | `"15s"` | Duration that non-leader candidates will wait before attempting to acquire leadership |
 | leaderElection.leaseName | string | `"kube-binpacking-exporter"` | Name of the Lease object used for leader election |
