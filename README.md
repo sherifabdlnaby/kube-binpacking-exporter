@@ -10,15 +10,15 @@
 
 Exports accurate and easy to aggregate **allocated** (Requests) to **allocatable** resources ratios across your Kubernetes cluster, per node group (via label combinations), or per-node.
 
-Kubernetes clusters can waste resources due to fragmentation, or unaccounted overhead from Daemonsets, and other system components. Improvements in binpacking are hard to measure, and can only be observed over extended periods of time. You can use KBE to monitor how well your cluster bin-packs overtime, and how in/effective scheduling tweaks are.  It is Like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop to export historical metrics to your O11Y stack.
+Kubernetes clusters can waste resources due to fragmentation, or unaccounted overhead from Daemonsets, and other system components. Improvements in binpacking are hard to measure, and can only be observed over extended periods of time. You can use KBE to monitor how well your cluster bin-packs overtime, and how in/effective scheduling tweaks are.  It is Like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop to export historical metrics to your O11Y stack. 
 
 ## Why not use standard Kube O11Y metrics?
 
 You need the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metrics can be used, they fall short because:
 
-    1. These metrics are pulled from different sources at different intervals. This causes aggregation to not give an accurate *snapshot* of the cluster state per scrape.
-    2. Queries get extremely complex, and you have to handle many cases ( e.g exclude failed & completed pods, handle init containers, not count pending pods, complex `joins` to group by node labels )
-    3. Some O11Y tools query language ( looking at you Datadog ) lacks the flexibility to join & combine metrics from different data sources.
+1. These metrics are pulled from different sources at different intervals. This causes aggregation to not give an accurate *snapshot* of the cluster state per scrape. When aggregating over long periods of time (days+) the inaccuracies compound.
+2. Queries get extremely complex, and you have to handle many cases ( e.g exclude failed & completed pods, handle init containers, not count pending pods, complex `joins` to group by node labels )
+3. Some O11Y tools query language ( looking at you Datadog ) lacks the flexibility to join & combine metrics from different data sources.
 
 **How is KBE better?**: KBE tracks the cluster state and returns an atomic snapshot of the cluster binpacking state on each scrape.
 
