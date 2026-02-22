@@ -234,11 +234,19 @@ jobs:
         if: steps.version.outputs.new_tag != ''
         uses: oras-project/setup-oras@v1
 
-      - name: Push Artifact Hub metadata
+      - name: Push Artifact Hub metadata (Helm chart)
         if: steps.version.outputs.new_tag != ''
         run: |
           oras push \
             ghcr.io/${{ github.repository_owner }}/charts/kube-binpacking-exporter:artifacthub.io \
+            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
+            artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
+
+      - name: Push Artifact Hub metadata (container images)
+        if: steps.version.outputs.new_tag != ''
+        run: |
+          oras push \
+            ghcr.io/${{ github.repository_owner }}/kube-binpacking-exporter:artifacthub.io \
             --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
             artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
 
