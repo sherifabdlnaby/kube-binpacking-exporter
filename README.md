@@ -28,8 +28,9 @@ You need the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metri
 ```bash
 helm install kube-binpacking-exporter \
   oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter \
-  --version <check-releases>
+  --version <check-releases-use-without-a-v>
 ```
+<sub>Helm chart version has no `v` prefix. <sub>
 
 Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how your O11Y stack pulls the metrics from `/metrics` at `:9101`.
 
@@ -88,6 +89,12 @@ go run . --kubeconfig ~/.kube/config \
 ### Out of scope
 
 KBE's only concern is **Are Pods' _requests_ being satisfied in the most efficient way possible**. Tracking if pods are setting the correct requests, and if they are under-utilizing requests is out of the scope of this tool.
+
+### Security Note
+
+- Project provide immutable releases, with signed Image & Chart, as well as Github attestations.
+- Helm chart values file default to using the Image @digest.
+- The Image runs in a distroless, read-only filesystem, with a non-root user with restricted permissions.
 
 --- 
 
