@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 var (
@@ -41,7 +42,8 @@ func main() {
 		logLevel        string
 		logFormat       string
 		resyncPeriod    string
-		listPageSize    int
+		listPageSize       int
+		nodeSelector       string
 		disableNodeMetrics bool
 
 		leaderElect              bool
@@ -63,6 +65,7 @@ func main() {
 	flag.StringVar(&logFormat, "log-format", "json", "log format: json, text")
 	flag.StringVar(&resyncPeriod, "resync-period", "30m", "informer cache resync period (e.g., 1m, 30s, 1h30m)")
 	flag.IntVar(&listPageSize, "list-page-size", 500, "number of resources to fetch per page during initial sync (0 = no pagination)")
+	flag.StringVar(&nodeSelector, "node-selector", "", "Kubernetes label selector to filter which nodes are tracked (e.g., 'environment=production,!node-role.kubernetes.io/control-plane')")
 	flag.BoolVar(&leaderElect, "leader-election", false, "enable leader election for HA (only the leader publishes binpacking metrics)")
 	flag.StringVar(&leaderElectLeaseName, "leader-election-lease-name", "kube-binpacking-exporter", "name of the Lease object used for leader election")
 	flag.StringVar(&leaderElectNamespace, "leader-election-namespace", "", "namespace for the leader election Lease (auto-detected from service account if empty)")
@@ -100,10 +103,18 @@ func main() {
 	}
 	logger.Info("informer resync period", "duration", resync)
 
+	if nodeSelector != "" {
+		if _, err := labels.Parse(nodeSelector); err != nil {
+			logger.Error("invalid node selector", "error", err, "value", nodeSelector)
+			os.Exit(1)
+		}
+		logger.Info("node selector filter", "selector", nodeSelector)
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	nodeLister, podLister, readyChecker, syncInfo, clientset, err := setupKubernetes(ctx, logger, kubeconfig, resync, int64(listPageSize))
+	nodeLister, podLister, readyChecker, syncInfo, clientset, err := setupKubernetes(ctx, logger, kubeconfig, resync, int64(listPageSize), nodeSelector)
 	if err != nil {
 		logger.Error("failed to setup kubernetes client", "error", err)
 		os.Exit(1)
@@ -176,6 +187,10 @@ func main() {
 			}
 			labelGroupsHTML += "</ul>"
 		}
+		nodeSelectorHTML := ""
+		if nodeSelector != "" {
+			nodeSelectorHTML = "<h3>Node Selector</h3><p><code>" + nodeSelector + "</code></p>"
+		}
 		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
 <head><title>Kube Binpacking Exporter</title></head>
@@ -188,9 +203,9 @@ func main() {
 <li><a href="/healthz">/healthz</a> - Liveness probe</li>
 <li><a href="/readyz">/readyz</a> - Readiness probe</li>
 </ul>
-%s
+%s%s
 </body>
-</html>`, version, metricsPath, metricsPath, labelGroupsHTML)
+</html>`, version, metricsPath, metricsPath, nodeSelectorHTML, labelGroupsHTML)
 	})
 
 	mux.Handle(metricsPath, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))

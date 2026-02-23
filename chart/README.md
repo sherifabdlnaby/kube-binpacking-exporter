@@ -68,6 +68,7 @@ helm uninstall kube-binpacking-exporter
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity rules for pod scheduling |
 | disableNodeMetrics | bool | `false` | Disable per-node metrics to reduce cardinality. Recommended for clusters with >100 nodes |
+| filter.nodeSelector | object | `{}` | Filter which nodes are tracked using Kubernetes label selectors. Supports `matchLabels` and `matchExpressions` (`In`, `NotIn`, `Exists`, `DoesNotExist`). Filtered server-side via the node informer |
 | fullnameOverride | string | `""` | Override the full release name |
 | image.digest | string | `""` | Image digest (e.g. `sha256:abc123...`). Takes precedence over `tag`. Injected automatically by the release workflow |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. Valid values: `Always`, `IfNotPresent`, `Never` |
@@ -164,6 +165,44 @@ labelGroups:
 ```
 
 **Impact**: Reduces metric cardinality by 90%+ while preserving cluster-wide and group-level insights.
+
+### Node Filtering
+
+Only track specific nodes using label selectors. Filtered server-side — excluded nodes are never cached.
+
+**Include only production workers:**
+
+```yaml
+filter:
+  nodeSelector:
+    matchLabels:
+      environment: production
+```
+
+**Exclude control plane and spot instances:**
+
+```yaml
+filter:
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
+      - key: spot
+        operator: NotIn
+        values: ["true"]
+```
+
+**Combined — production workers, exclude spot:**
+
+```yaml
+filter:
+  nodeSelector:
+    matchLabels:
+      environment: production
+    matchExpressions:
+      - key: spot
+        operator: DoesNotExist
+```
 
 ### Enable Prometheus Operator Integration
 

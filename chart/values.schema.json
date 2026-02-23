@@ -96,6 +96,50 @@
       "type": "boolean",
       "description": "Disable per-node metrics to reduce cardinality"
     },
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Filter which nodes are tracked",
+      "properties": {
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Kubernetes label selector to filter nodes. Supports matchLabels and matchExpressions",
+          "properties": {
+            "matchLabels": {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "description": "Equality-based label selectors (key=value)"
+            },
+            "matchExpressions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["key", "operator"],
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "description": "Label key"
+                  },
+                  "operator": {
+                    "type": "string",
+                    "enum": ["In", "NotIn", "Exists", "DoesNotExist"],
+                    "description": "Operator for the selector"
+                  },
+                  "values": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Values for In/NotIn operators"
+                  }
+                }
+              },
+              "description": "Set-based label selectors"
+            }
+          }
+        }
+      }
+    },
     "leaderElection": {
       "type": "object",
       "additionalProperties": false,

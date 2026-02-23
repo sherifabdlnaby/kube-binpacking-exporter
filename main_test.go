@@ -10,6 +10,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // TestParseResources tests the parseResources function.
@@ -306,5 +307,36 @@ func TestSyncEndpoint(t *testing.T) {
 	}
 	if podSynced, ok := syncResp["pod_synced"].(bool); !ok || !podSynced {
 		t.Errorf("/sync pod_synced = %v, want true", syncResp["pod_synced"])
+	}
+}
+
+// TestNodeSelectorValidation tests that labels.Parse() accepts valid selectors
+// and rejects invalid ones. This validates the syntax we document and support
+// for the --node-selector flag.
+func TestNodeSelectorValidation(t *testing.T) {
+	tests := []struct {
+		name     string
+		selector string
+		wantErr  bool
+	}{
+		{name: "empty string", selector: "", wantErr: false},
+		{name: "equality", selector: "env=production", wantErr: false},
+		{name: "inequality", selector: "env!=staging", wantErr: false},
+		{name: "set-based In", selector: "env in (production,staging)", wantErr: false},
+		{name: "set-based NotIn", selector: "tier notin (frontend)", wantErr: false},
+		{name: "exists", selector: "gpu", wantErr: false},
+		{name: "does not exist", selector: "!spot", wantErr: false},
+		{name: "complex mixed", selector: "env=production,!node-role.kubernetes.io/control-plane,tier in (backend,api)", wantErr: false},
+		{name: "invalid operator", selector: "env===production", wantErr: true},
+		{name: "unclosed paren", selector: "env in (a,b", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := labels.Parse(tt.selector)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("labels.Parse(%q) error = %v, wantErr %v", tt.selector, err, tt.wantErr)
+			}
+		})
 	}
 }

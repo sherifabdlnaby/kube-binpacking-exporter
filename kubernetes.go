@@ -29,7 +29,7 @@ type SyncInfo struct {
 	PodSynced    func() bool
 }
 
-func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath string, resyncPeriod time.Duration, listPageSize int64) (listerscorev1.NodeLister, listerscorev1.PodLister, ReadyChecker, *SyncInfo, kubernetes.Interface, error) {
+func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath string, resyncPeriod time.Duration, listPageSize int64, nodeSelector string) (listerscorev1.NodeLister, listerscorev1.PodLister, ReadyChecker, *SyncInfo, kubernetes.Interface, error) {
 	config, configSource, err := buildConfig(kubeconfigPath)
 	if err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("building kubeconfig: %w", err)
@@ -73,10 +73,14 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 		}),
 	}
 
-	if listPageSize > 0 {
-		logger.Info("configuring informers with pagination", "page_size", listPageSize)
+	if listPageSize > 0 || nodeSelector != "" {
 		nodeOpts = append(nodeOpts, informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-			opts.Limit = listPageSize
+			if listPageSize > 0 {
+				opts.Limit = listPageSize
+			}
+			if nodeSelector != "" {
+				opts.LabelSelector = nodeSelector
+			}
 		}))
 	}
 
@@ -84,6 +88,7 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 	podFactory := informers.NewSharedInformerFactoryWithOptions(clientset, resyncPeriod, podOpts...)
 	logger.Info("informer factories configured",
 		"pod_field_selector", "status.phase!=Succeeded,status.phase!=Failed",
+		"node_label_selector", nodeSelector,
 		"pagination", listPageSize > 0)
 
 	nodeInformer := nodeFactory.Core().V1().Nodes()

@@ -63,10 +63,17 @@ go run . --kubeconfig ~/.kube/config
 # Debug logging
 go run . --kubeconfig ~/.kube/config --log-level=debug
 
-# With label grouping 
+# With label grouping
 go run . --kubeconfig ~/.kube/config \
   --label-group=topology.kubernetes.io/zone,node.kubernetes.io/instance-type \
   --label-group=topology.kubernetes.io/zone
+
+# Node filtering — only production nodes
+go run . --kubeconfig ~/.kube/config --node-selector="environment=production"
+
+# Node filtering — exclude control plane and spot instances
+go run . --kubeconfig ~/.kube/config \
+  --node-selector='!node-role.kubernetes.io/control-plane,spot notin (true)'
 ```
 
 
@@ -155,6 +162,7 @@ kube_binpacking_group_node_count{label_group="topology.kubernetes.io/zone",label
 | `--metrics-path` | `/metrics` | HTTP path for metrics endpoint |
 | `--resources` | `cpu,memory` | Comma-separated list of resources to track |
 | `--label-group` | (none) | Repeatable. Comma-separated label keys defining one combination group (e.g., `--label-group=zone,instance-type --label-group=zone`) |
+| `--node-selector` | (none) | Kubernetes label selector to filter which nodes are tracked (e.g., `environment=production,!spot`). Uses [set-based syntax](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#set-based-requirement). Filtered server-side via the node informer |
 | `--disable-node-metrics` | `false` | Disable per-node metrics to reduce cardinality (only emit cluster-wide and label-group metrics) |
 | `--log-level` | `info` | Log level: debug, info, warn, error |
 | `--log-format` | `json` | Log format: json, text |
