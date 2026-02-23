@@ -44,6 +44,7 @@ dockers_v2:
       - "ghcr.io/sherifabdlnaby/kube-binpacking-exporter"
     tags:
       - "{{ .Tag }}"
+      - "sha-{{ .FullCommit }}"
       - "{{- if not .Prerelease }}v{{ .Major }}.{{ .Minor }}{{ end }}"
       - "{{- if not .Prerelease }}v{{ .Major }}{{ end }}"
     platforms:
