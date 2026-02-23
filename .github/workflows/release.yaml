@@ -144,13 +144,22 @@ jobs:
           fetch-depth: 0
 
       # ── Create and push tag ───────────────────────────────────────────
+      # Reuses an existing tag if it already points at HEAD (e.g. workflow re-run).
+      # Since releases are immutable, if this tag was already fully released,
+      # subsequent steps (GoReleaser, Helm push, etc.) will fail on their own.
       - name: Create tag
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ needs.version.outputs.new_tag }}" -m "Release ${{ needs.version.outputs.new_tag }}"
-          git push origin "${{ needs.version.outputs.new_tag }}"
-          echo "Pushed tag ${{ needs.version.outputs.new_tag }}"
+          TAG="${{ needs.version.outputs.new_tag }}"
+
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "${TAG}"; then
+            echo "Tag ${TAG} already exists on remote — reusing it"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "${TAG}" -m "Release ${TAG}"
+            git push origin "${TAG}"
+            echo "Pushed tag ${TAG}"
+          fi
 
       # ── Build environment ─────────────────────────────────────────────
       - name: Set up QEMU
