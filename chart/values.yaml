@@ -39,6 +39,20 @@ resyncPeriod: 30m
 # -- Page size for initial list calls. Use `0` to disable pagination. Recommended `500` for clusters with >1000 pods
 listPageSize: 500
 
+filter:
+  # -- Filter which nodes are tracked using Kubernetes label selectors.
+  # Supports `matchLabels` (equality) and `matchExpressions` (`In`, `NotIn`, `Exists`, `DoesNotExist`).
+  # Filtered server-side via the node informer — excluded nodes are never cached.
+  # @default -- `{}` (all nodes)
+  nodeSelector: {}
+  # Example — only production workers, exclude spot:
+  # nodeSelector:
+  #   matchLabels:
+  #     environment: production
+  #   matchExpressions:
+  #     - key: spot
+  #       operator: DoesNotExist
+
 # -- Label groups for combination grouping. Each entry is a comma-separated list of label keys defining one group.
 # Nodes are grouped by the tuple of values for all keys in the group. Example: `["topology.kubernetes.io/zone,node.kubernetes.io/instance-type", "topology.kubernetes.io/zone"]`
 labelGroups: []

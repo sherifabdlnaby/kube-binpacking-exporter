@@ -80,6 +80,8 @@ go run . --list-page-size=0                                                     
 go run . --label-group=topology.kubernetes.io/zone,node.kubernetes.io/instance-type             # group by zone+instance-type combination
 go run . --label-group=topology.kubernetes.io/zone                                             # group by zone only
 go run . --disable-node-metrics --label-group=topology.kubernetes.io/zone                      # reduce cardinality - cluster + zone metrics only
+go run . --node-selector="environment=production"                                              # only track production nodes
+go run . --node-selector='!node-role.kubernetes.io/control-plane,spot notin (true)'            # exclude control plane + spot
 ```
 
 ## Testing
@@ -110,7 +112,7 @@ See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, help
 
 **Health Checks**: `/healthz` = process alive, `/readyz` = cache synced | Readiness: 5s delay/10s period, Liveness: 10s delay/30s period
 
-**Informers**: `--resync-period` (default 30m) | Separate node and pod factories (pod factory uses `status.phase!=Succeeded,status.phase!=Failed` field selector to exclude terminated pods server-side) | `--list-page-size` pagination (default 500, ~40% memory reduction, client-go handles Continue tokens)
+**Informers**: `--resync-period` (default 30m) | Separate node and pod factories (pod factory uses `status.phase!=Succeeded,status.phase!=Failed` field selector to exclude terminated pods server-side) | `--list-page-size` pagination (default 500, ~40% memory reduction, client-go handles Continue tokens) | `--node-selector` label selector for server-side node filtering via `WithTweakListOptions` (excluded nodes never cached)
 
 ## Conventions
 

@@ -60,6 +60,33 @@ true
 {{- end -}}
 {{- end }}
 
+{{/*
+Convert filter.nodeSelector (matchLabels + matchExpressions) to a CLI label selector string.
+Returns empty string if nodeSelector is empty or not set.
+*/}}
+{{- define "kube-binpacking-exporter.nodeSelectorString" -}}
+{{- $parts := list -}}
+{{- if .Values.filter -}}
+{{- if .Values.filter.nodeSelector -}}
+{{- range $key, $value := .Values.filter.nodeSelector.matchLabels -}}
+  {{- $parts = append $parts (printf "%s=%s" $key $value) -}}
+{{- end -}}
+{{- range .Values.filter.nodeSelector.matchExpressions -}}
+  {{- if eq .operator "In" -}}
+    {{- $parts = append $parts (printf "%s in (%s)" .key (join "," .values)) -}}
+  {{- else if eq .operator "NotIn" -}}
+    {{- $parts = append $parts (printf "%s notin (%s)" .key (join "," .values)) -}}
+  {{- else if eq .operator "Exists" -}}
+    {{- $parts = append $parts .key -}}
+  {{- else if eq .operator "DoesNotExist" -}}
+    {{- $parts = append $parts (printf "!%s" .key) -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- join "," $parts -}}
+{{- end }}
+
 {{- define "kube-binpacking-exporter.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
 {{- default (include "kube-binpacking-exporter.fullname" .) .Values.serviceAccount.name }}
