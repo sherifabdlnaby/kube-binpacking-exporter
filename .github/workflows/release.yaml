@@ -103,8 +103,8 @@ jobs:
 
           BUMP="${{ steps.pr.outputs.bump }}"
 
-          # Get latest semver tag
-          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          # Get latest stable semver tag (skip pre-releases like -rc1, -beta1, etc.)
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | grep -v '-' | head -1)
           if [ -z "$LATEST_TAG" ]; then
             LATEST_TAG="v0.0.0"
           fi
@@ -196,6 +196,8 @@ jobs:
           distribution: goreleaser
           version: '~> v2'
           args: release --clean --draft
+        env:
+          GORELEASER_PREVIOUS_TAG: ${{ needs.version.outputs.previous_tag }}
 
       - name: Attest binary artifacts
         uses: actions/attest-build-provenance@v3
