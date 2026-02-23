@@ -45,7 +45,7 @@ jobs:
           cache: true
 
       - name: Cache helm-docs
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/go/bin/helm-docs
           key: helm-docs-${{ runner.os }}-v1.14.2
