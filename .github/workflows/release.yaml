@@ -221,6 +221,28 @@ jobs:
           echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
           echo "Image digest: ${DIGEST}"
 
+      # ── Docker image attestation (provenance + SBOM) ──────────────────
+      - name: Attest Docker image provenance
+        if: steps.version.outputs.new_tag != ''
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
+
+      - name: Generate Docker image SBOM
+        if: steps.version.outputs.new_tag != ''
+        run: |
+          syft "ghcr.io/${{ github.repository }}@${{ steps.digest.outputs.digest }}" \
+            -o spdx-json=image-sbom.spdx.json
+
+      - name: Attest Docker image SBOM
+        if: steps.version.outputs.new_tag != ''
+        uses: actions/attest-sbom@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
+          sbom-path: image-sbom.spdx.json
+
       # ── Helm chart (OCI registry) ────────────────────────────────────
       - name: Set up Helm
         if: steps.version.outputs.new_tag != ''

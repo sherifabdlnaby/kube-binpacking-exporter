@@ -179,3 +179,14 @@ release:
       --certificate-identity-regexp="https://github.com/sherifabdlnaby/kube-binpacking-exporter/.*" \
       ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter:{{.Version}}
     ```
+
+    **Verify provenance & SBOM attestations:**
+    ```bash
+    # Docker image provenance
+    gh attestation verify oci://ghcr.io/sherifabdlnaby/kube-binpacking-exporter:{{.Tag}} \
+      --owner sherifabdlnaby
+
+    # Binary artifacts
+    gh attestation verify <binary-file> \
+      --owner sherifabdlnaby
+    ```
