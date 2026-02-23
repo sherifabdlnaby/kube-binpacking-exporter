@@ -69,9 +69,10 @@ helm uninstall kube-binpacking-exporter
 | affinity | object | `{}` | Affinity rules for pod scheduling |
 | disableNodeMetrics | bool | `false` | Disable per-node metrics to reduce cardinality. Recommended for clusters with >100 nodes |
 | fullnameOverride | string | `""` | Override the full release name |
+| image.digest | string | `""` | Image digest (e.g. `sha256:abc123...`). Takes precedence over `tag`. Injected automatically by the release workflow |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. Valid values: `Always`, `IfNotPresent`, `Never` |
 | image.repository | string | `"ghcr.io/sherifabdlnaby/kube-binpacking-exporter"` | Container image repository |
-| image.tag | string | `""` | Image tag. Defaults to the chart's `appVersion` when empty |
+| image.tag | string | `""` | Image tag. Defaults to the chart's `appVersion` when empty. Ignored if `digest` is set |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries |
 | labelGroups | list | `[]` | Label groups for combination grouping. Each entry is a comma-separated list of label keys defining one group. Nodes are grouped by the tuple of values for all keys in the group. Example: `["topology.kubernetes.io/zone,node.kubernetes.io/instance-type", "topology.kubernetes.io/zone"]` |
 | leaderElection.enabled | bool | `false` | Enable leader election for HA active-passive mode. Only the leader publishes binpacking metrics. Auto-enabled when `replicaCount > 1` |

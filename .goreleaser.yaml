@@ -44,6 +44,7 @@ dockers_v2:
       - "ghcr.io/sherifabdlnaby/kube-binpacking-exporter"
     tags:
       - "{{ .Tag }}"
+      - "sha-{{ .FullCommit }}"
       - "{{- if not .Prerelease }}v{{ .Major }}.{{ .Minor }}{{ end }}"
       - "{{- if not .Prerelease }}v{{ .Major }}{{ end }}"
     platforms:
@@ -177,4 +178,15 @@ release:
       --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
       --certificate-identity-regexp="https://github.com/sherifabdlnaby/kube-binpacking-exporter/.*" \
       ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter:{{.Version}}
+    ```
+
+    **Verify provenance & SBOM attestations:**
+    ```bash
+    # Docker image provenance
+    gh attestation verify oci://ghcr.io/sherifabdlnaby/kube-binpacking-exporter:{{.Tag}} \
+      --owner sherifabdlnaby
+
+    # Binary artifacts
+    gh attestation verify <binary-file> \
+      --owner sherifabdlnaby
     ```

@@ -23,7 +23,11 @@
         },
         "tag": {
           "type": "string",
-          "description": "Image tag. Defaults to chart appVersion when empty"
+          "description": "Image tag. Defaults to chart appVersion when empty. Ignored if digest is set"
+        },
+        "digest": {
+          "type": "string",
+          "description": "Image digest (e.g. sha256:abc123...). Takes precedence over tag"
         }
       }
     },
