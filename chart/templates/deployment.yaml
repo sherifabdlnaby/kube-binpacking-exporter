@@ -77,6 +77,10 @@ spec:
             {{- if .Values.disableNodeMetrics }}
             - --disable-node-metrics
             {{- end }}
+            {{- $nodeSelector := include "kube-binpacking-exporter.nodeSelectorString" . -}}
+            {{- if $nodeSelector }}
+            - --node-selector={{ $nodeSelector }}
+            {{- end }}
             {{- if include "kube-binpacking-exporter.leaderElectionEnabled" . }}
             - --leader-election
             - --leader-election-id=$(POD_NAME)

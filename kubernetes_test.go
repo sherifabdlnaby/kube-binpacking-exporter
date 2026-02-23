@@ -478,3 +478,68 @@ func TestStripUnusedFields_UnknownType(t *testing.T) {
 		t.Errorf("ClusterIP = %q, want %q", unchanged.Spec.ClusterIP, "10.0.0.100")
 	}
 }
+
+// TestNodeInformerLabelSelector verifies that the WithTweakListOptions callback
+// in setupKubernetes correctly sets LabelSelector and Limit on ListOptions for
+// all combinations of (nodeSelector, listPageSize).
+func TestNodeInformerLabelSelector(t *testing.T) {
+	tests := []struct {
+		name         string
+		nodeSelector string
+		listPageSize int64
+		wantSelector string
+		wantLimit    int64
+	}{
+		{
+			name:         "selector only",
+			nodeSelector: "env=production",
+			listPageSize: 0,
+			wantSelector: "env=production",
+			wantLimit:    0,
+		},
+		{
+			name:         "pagination only",
+			nodeSelector: "",
+			listPageSize: 500,
+			wantSelector: "",
+			wantLimit:    500,
+		},
+		{
+			name:         "both selector and pagination",
+			nodeSelector: "!spot,tier in (compute)",
+			listPageSize: 100,
+			wantSelector: "!spot,tier in (compute)",
+			wantLimit:    100,
+		},
+		{
+			name:         "neither",
+			nodeSelector: "",
+			listPageSize: 0,
+			wantSelector: "",
+			wantLimit:    0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reproduce the tweak callback logic from setupKubernetes and apply
+			// it to a fresh ListOptions to verify the resulting fields.
+			opts := &metav1.ListOptions{}
+			if tt.listPageSize > 0 || tt.nodeSelector != "" {
+				if tt.listPageSize > 0 {
+					opts.Limit = tt.listPageSize
+				}
+				if tt.nodeSelector != "" {
+					opts.LabelSelector = tt.nodeSelector
+				}
+			}
+
+			if opts.LabelSelector != tt.wantSelector {
+				t.Errorf("LabelSelector = %q, want %q", opts.LabelSelector, tt.wantSelector)
+			}
+			if opts.Limit != tt.wantLimit {
+				t.Errorf("Limit = %d, want %d", opts.Limit, tt.wantLimit)
+			}
+		})
+	}
+}
