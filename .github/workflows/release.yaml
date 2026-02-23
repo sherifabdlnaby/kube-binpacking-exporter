@@ -211,6 +211,16 @@ jobs:
           sarif_file: trivy-release.sarif
           category: trivy-docker-image
 
+      # ── Image digest (for immutable Helm chart references) ──────────
+      - name: Get image digest
+        if: steps.version.outputs.new_tag != ''
+        id: digest
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}:${{ steps.version.outputs.new_tag }}"
+          DIGEST=$(docker buildx imagetools inspect "${IMAGE}" --format '{{json .Manifest}}' | jq -r '.digest')
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "Image digest: ${DIGEST}"
+
       # ── Helm chart (OCI registry) ────────────────────────────────────
       - name: Set up Helm
         if: steps.version.outputs.new_tag != ''
@@ -220,6 +230,8 @@ jobs:
         if: steps.version.outputs.new_tag != ''
         run: |
           CHART_VERSION="${{ steps.version.outputs.version }}"
+          # Inject image digest into values.yaml for immutable image references
+          sed -i 's|digest: ""|digest: "${{ steps.digest.outputs.digest }}"|' chart/values.yaml
           helm package chart/ --version "${CHART_VERSION}" --app-version "${{ steps.version.outputs.new_tag }}"
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
           helm push "kube-binpacking-exporter-${CHART_VERSION}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
